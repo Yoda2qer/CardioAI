@@ -1,0 +1,194 @@
+packages: [pandas, scikit-learn]
+datasets: [heart_disease.csv]
+
+statement: |
+  Оцените модель диагностики ИБС как диагностический тест и подберите порог для сценария, в котором важно не пропускать больных.
+
+  Модель `model` уже обучена, вероятности ИБС для тестовых пациентов лежат в `proba`. Разбиение здесь другое, чем в уроках, поэтому числа будут отличаться.
+
+  1. При пороге 0,5 посчитайте элементы матрицы ошибок: `tp`, `fp`, `tn`, `fn`.
+  2. По ним вычислите `sensitivity`, `specificity`, `ppv` и `npv`.
+  3. `auc` — площадь под ROC-кривой.
+  4. Найдите **самый высокий** порог, при котором чувствительность не ниже 0,90. Сохраните порог в `threshold_90`, а специфичность при нём — в `specificity_90`. Удобнее всего взять массивы из `roc_curve`.
+  5. `ppv_screening` — прогностическая ценность положительного результата при пороге 0,5, если ту же модель применить там, где ИБС есть у 10% обследуемых. Используйте `sensitivity` и `specificity` из шага 2.
+
+  ::: note Формула для шага 5
+  PPV = Se × p / (Se × p + (1 − Sp) × (1 − p)), где p — распространённость.
+  :::
+
+  ::: clinic Сравните два значения PPV
+  Одна и та же модель, один и тот же порог — и два очень разных ответа на вопрос «насколько можно верить положительному результату». Подумайте, что это означает для идеи использовать модель, обученную на пациентах стационара, в массовом скрининге.
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import confusion_matrix, roc_auc_score, roc_curve
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  preprocess = ColumnTransformer([
+      ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler())]), numeric),
+      ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), ["cp"]),
+      ("bin", SimpleImputer(strategy="most_frequent"), ["sex", "exang"]),
+  ])
+  X, y = hd[numeric + ["cp", "sex", "exang"]], hd["target"]
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.25, random_state=7, stratify=y
+  )
+  model = Pipeline([("prep", preprocess), ("clf", LogisticRegression(max_iter=1000))]).fit(X_train, y_train)
+  proba = model.predict_proba(X_test)[:, 1]
+
+  # 1. Матрица ошибок при пороге 0.5
+  tp = ...
+  fp = ...
+  tn = ...
+  fn = ...
+
+  # 2. Метрики
+  sensitivity = ...
+  specificity = ...
+  ppv = ...
+  npv = ...
+
+  # 3. Площадь под ROC-кривой
+  auc = ...
+
+  # 4. Порог для чувствительности не ниже 0.90
+  threshold_90 = ...
+  specificity_90 = ...
+
+  # 5. PPV при распространённости 10%
+  ppv_screening = ...
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import confusion_matrix, roc_auc_score, roc_curve
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  preprocess = ColumnTransformer([
+      ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler())]), numeric),
+      ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), ["cp"]),
+      ("bin", SimpleImputer(strategy="most_frequent"), ["sex", "exang"]),
+  ])
+  X, y = hd[numeric + ["cp", "sex", "exang"]], hd["target"]
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.25, random_state=7, stratify=y
+  )
+  model = Pipeline([("prep", preprocess), ("clf", LogisticRegression(max_iter=1000))]).fit(X_train, y_train)
+  proba = model.predict_proba(X_test)[:, 1]
+
+  tn, fp, fn, tp = confusion_matrix(y_test, proba >= 0.5).ravel()
+
+  sensitivity = tp / (tp + fn)
+  specificity = tn / (tn + fp)
+  ppv = tp / (tp + fp)
+  npv = tn / (tn + fn)
+
+  auc = roc_auc_score(y_test, proba)
+
+  fpr, tpr, thresholds = roc_curve(y_test, proba)
+  index = np.argmax(tpr >= 0.90)
+  threshold_90 = thresholds[index]
+  specificity_90 = 1 - fpr[index]
+
+  prevalence = 0.10
+  ppv_screening = sensitivity * prevalence / (
+      sensitivity * prevalence + (1 - specificity) * (1 - prevalence)
+  )
+  print(tp, fp, tn, fn)
+  print(round(ppv, 3), round(ppv_screening, 3), round(threshold_90, 3))
+
+checks:
+  - var: tp
+    type: equal
+    expected: 100
+    label: Истинно положительные
+    hint: confusion_matrix(y_test, proba >= 0.5).ravel() возвращает четыре числа в порядке tn, fp, fn, tp.
+  - var: fp
+    type: equal
+    expected: 30
+    label: Ложноположительные
+    hint: Порядок значений после ravel() — tn, fp, fn, tp. Проверьте, что они присвоены нужным переменным.
+  - var: tn
+    type: equal
+    expected: 73
+    label: Истинно отрицательные
+    hint: Порядок значений после ravel() — tn, fp, fn, tp.
+  - var: fn
+    type: equal
+    expected: 27
+    label: Ложноотрицательные
+    hint: Порядок значений после ravel() — tn, fp, fn, tp.
+  - var: sensitivity
+    type: approx
+    expected: 0.7874
+    tol: 0.001
+    label: Чувствительность
+    hint: Доля найденных больных — tp / (tp + fn).
+  - var: specificity
+    type: approx
+    expected: 0.7087
+    tol: 0.001
+    label: Специфичность
+    hint: Доля верно отпущенных здоровых — tn / (tn + fp).
+  - var: ppv
+    type: approx
+    expected: 0.7692
+    tol: 0.001
+    label: PPV
+    hint: Доля больных среди тех, кого модель назвала больными, — tp / (tp + fp).
+  - var: npv
+    type: approx
+    expected: 0.73
+    tol: 0.001
+    label: NPV
+    hint: Доля здоровых среди названных здоровыми — tn / (tn + fn).
+  - var: auc
+    type: approx
+    expected: 0.8649
+    tol: 0.002
+    label: Площадь под ROC-кривой
+    hint: Используйте roc_auc_score(y_test, proba) — с вероятностями, а не с готовыми ответами.
+  - var: threshold_90
+    type: approx
+    expected: 0.3403
+    tol: 0.012
+    label: Порог для чувствительности 0,90
+    hint: roc_curve возвращает пороги по убыванию. Первая позиция, где tpr >= 0.90, — np.argmax(tpr >= 0.90) — даёт самый высокий подходящий порог.
+  - var: specificity_90
+    type: approx
+    expected: 0.6117
+    tol: 0.02
+    label: Специфичность при этом пороге
+    hint: Специфичность равна 1 - fpr в той же позиции массива.
+  - var: ppv_screening
+    type: approx
+    expected: 0.231
+    tol: 0.003
+    label: PPV при распространённости 10%
+    hint: Подставьте в формулу sensitivity и specificity из шага 2 и p = 0.10.

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Курс{% endblock %}
+{% block content %}
+<div class="container">
+  <section class="progress-hero">
+    <div>
+      <p class="eyebrow">{{ course.title }}</p>
+      <h1>Здравствуйте, {{ user.full_name }}</h1>
+      {% if progress.completed %}
+        <p>Курс пройден полностью. Сертификат готов.</p>
+      {% elif progress.done_steps == 0 %}
+        <p>Курс идёт строго по порядку: каждый урок открывает следующий, а тест в конце раздела — следующий раздел.</p>
+      {% else %}
+        <p>Пройдено {{ progress.done_steps }} из {{ plural(progress.total_steps, "шага", "шагов", "шагов") }}.</p>
+      {% endif %}
+      <a class="btn btn-light" href="{{ progress.next_url }}">
+        {% if progress.completed %}{{ icon("award") }} Открыть сертификат
+        {% elif progress.done_steps == 0 %}Начать обучение {{ icon("arrow-right") }}
+        {% else %}Продолжить {{ icon("arrow-right") }}{% endif %}
+      </a>
+    </div>
+    <div class="progress-ring" style="--value: {{ progress.percent }}" role="img" aria-label="Пройдено {{ progress.percent }}% курса">
+      <span>{{ progress.percent }}%</span>
+    </div>
+  </section>
+
+  {% if user.is_admin %}
+    <div class="alert alert-info">Вы вошли как администратор: все уроки и тесты открыты без соблюдения порядка.</div>
+  {% endif %}
+
+  <div class="section-list">
+    {% for section in course.sections %}
+      {% set opened = progress.section_open[section.id] %}
+      {% set quiz = progress.quiz[section.id] %}
+      {% set done = progress.section_done(section) %}
+      {% set total = section.lessons | length + 1 %}
+      <details class="section-card {{ 'is-locked' if not opened }}" {{ 'open' if opened and not quiz.passed }}>
+        <summary>
+          <span class="section-number">{{ section.number }}</span>
+          <span class="section-head">
+            <span class="section-title">{{ section.title }}</span>
+            <span class="section-desc">{{ section.description }}</span>
+          </span>
+          <span class="section-meta">
+            {% if quiz.passed %}<span class="badge badge-success">{{ icon("check", 14) }} Пройден</span>
+            {% elif not opened %}<span class="badge badge-muted">{{ icon("lock", 14) }} Закрыт</span>
+            {% else %}<span class="badge badge-accent">{{ done }} / {{ total }}</span>{% endif %}
+          </span>
+        </summary>
+        <ol class="lesson-list">
+          {% for lesson in section.lessons %}
+            {% set state = progress.lesson_state[lesson.id] %}
+            <li class="lesson-row is-{{ state }}">
+              {% if state == "locked" %}<span class="lesson-link">{% else %}<a class="lesson-link" href="/lesson/{{ lesson.id }}">{% endif %}
+                <span class="lesson-status" aria-hidden="true">
+                  {% if state == "done" %}{{ icon("check", 16) }}{% elif state == "locked" %}{{ icon("lock", 14) }}{% else %}{{ lesson.number }}{% endif %}
+                </span>
+                <span class="lesson-title">{{ lesson.title }}</span>
+                <span class="lesson-tags">
+                  <span class="tag {{ 'tag-practice' if lesson.is_practice }}">
+                    {{ icon("code" if lesson.is_practice else "book", 14) }} {{ "Практика" if lesson.is_practice else "Теория" }}
+                  </span>
+                  <span class="tag tag-time">{{ icon("clock", 14) }} {{ lesson.minutes }} мин</span>
+                </span>
+                <span class="visually-hidden">
+                  {{ {"done": "пройден", "open": "доступен", "locked": "закрыт"}[state] }}
+                </span>
+              {% if state == "locked" %}</span>{% else %}</a>{% endif %}
+            </li>
+          {% endfor %}
+          <li class="lesson-row lesson-row-quiz is-{{ quiz.state }}">
+            {% if quiz.state == "locked" %}<span class="lesson-link">{% else %}<a class="lesson-link" href="/quiz/{{ section.id }}">{% endif %}
+              <span class="lesson-status" aria-hidden="true">
+                {% if quiz.passed %}{{ icon("check", 16) }}{% elif quiz.state == "locked" %}{{ icon("lock", 14) }}{% else %}{{ icon("quiz", 16) }}{% endif %}
+              </span>
+              <span class="lesson-title">Тест по разделу</span>
+              <span class="lesson-tags">
+                {% if quiz.passed %}
+                  <span class="tag tag-success">{{ quiz.passing_attempt.score }} из {{ quiz.passing_attempt.total }}</span>
+                {% elif quiz.locked_until %}
+                  <span class="tag tag-warn">Пауза до {{ quiz.locked_until | local_time }}</span>
+                {% elif quiz.available %}
+                  <span class="tag tag-practice">Осталось попыток: {{ quiz.attempts_left }}</span>
+                {% else %}
+                  <span class="tag">15 вопросов</span>
+                {% endif %}
+              </span>
+            {% if quiz.state == "locked" %}</span>{% else %}</a>{% endif %}
+          </li>
+        </ol>
+      </details>
+    {% endfor %}
+  </div>
+
+  <section class="certificate-teaser {{ 'is-ready' if progress.completed }}">
+    <div class="feature-icon">{{ icon("award", 22) }}</div>
+    <div>
+      <h2>Сертификат о прохождении</h2>
+      {% if progress.completed %}
+        <p>Все тесты сданы. Сертификат можно открыть и распечатать.</p>
+        <a class="btn btn-primary" href="/certificate">Открыть сертификат</a>
+      {% else %}
+        <p>Станет доступен после сдачи тестов по всем разделам.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

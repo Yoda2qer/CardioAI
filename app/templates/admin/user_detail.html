@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ target.full_name }}{% endblock %}
+{% macro action(path, label, style="btn-secondary", confirm=None) %}
+<form method="post" action="/admin/users/{{ target.id }}/{{ path }}" class="inline-form" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button class="btn {{ style }} btn-sm" type="submit">{{ label }}</button>
+</form>
+{% endmacro %}
+{% block content %}
+<div class="container">
+  <a class="sidebar-back" href="/admin">{{ icon("arrow-left", 16) }} Все слушатели</a>
+  <header class="page-head">
+    <div>
+      <h1>{{ target.full_name }}</h1>
+      <p class="muted">
+        {{ target.email }} · регистрация {{ target.created_at | local_time("%d.%m.%Y") }} · последний вход {{ target.last_login_at | local_time }}
+        {% if target.invite_code %} · код {{ target.invite_code.code }}{% endif %}
+      </p>
+    </div>
+    <div class="page-head-badges">
+      {% if target.is_admin %}<span class="badge badge-accent">Администратор</span>{% endif %}
+      {% if not target.is_active %}<span class="badge badge-danger">Заблокирован</span>{% endif %}
+      <span class="badge badge-muted">Прогресс {{ progress.percent }}%</span>
+    </div>
+  </header>
+
+  {% if temp_password %}
+    <div class="alert alert-success" role="status">
+      <strong>Временный пароль: <code class="temp-password">{{ temp_password }}</code></strong><br>
+      Передайте его слушателю. Пароль показывается один раз; при первом входе система попросит задать новый.
+    </div>
+  {% endif %}
+
+  {% if target.id != user.id %}
+    <section class="card actions-card">
+      {{ action("reset-password", "Выдать временный пароль", confirm="Текущий пароль перестанет работать. Продолжить?") }}
+      {{ action("toggle-active", "Разблокировать" if not target.is_active else "Заблокировать", "btn-secondary" if not target.is_active else "btn-danger") }}
+      {{ action("toggle-admin", "Снять права администратора" if target.is_admin else "Сделать администратором", confirm="Изменить роль пользователя?") }}
+    </section>
+  {% endif %}
+
+  {% for section in course.sections %}
+    {% set quiz = progress.quiz[section.id] %}
+    {% set section_attempts = attempts.get(section.id, []) %}
+    <section class="card">
+      <h2>{{ section.number }}. {{ section.title }}</h2>
+      <div class="table-wrap">
+        <table class="table table-compact">
+          <thead><tr><th scope="col">Урок</th><th scope="col">Тип</th><th scope="col">Завершён</th><th scope="col">Код</th></tr></thead>
+          <tbody>
+            {% for lesson in section.lessons %}
+              {% set submission = submissions.get(lesson.id) %}
+              <tr>
+                <td>{{ lesson.number }}. {{ lesson.title }}</td>
+                <td>{{ "Практика" if lesson.is_practice else "Теория" }}</td>
+                <td>{{ done_at.get(lesson.id) | local_time }}</td>
+                <td>
+                  {% if submission %}
+                    <details class="code-details">
+                      <summary>{{ plural(submission.attempts, "проверка", "проверки", "проверок") }}{{ ", выполнено" if submission.passed else ", не выполнено" }}</summary>
+                      <pre class="output">{{ submission.code }}</pre>
+                    </details>
+                  {% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Тест</h3>
+      {% if section_attempts %}
+        <div class="table-wrap">
+          <table class="table table-compact">
+            <thead><tr><th scope="col">Дата</th><th scope="col">Результат</th><th scope="col">Итог</th></tr></thead>
+            <tbody>
+              {% for attempt in section_attempts %}
+                <tr class="{{ 'is-void' if attempt.is_void }}">
+                  <td>{{ attempt.created_at | local_time }}</td>
+                  <td>{{ attempt.score }} / {{ attempt.total }}</td>
+                  <td>
+                    {% if attempt.passed %}<span class="badge badge-success">Сдан</span>
+                    {% elif attempt.is_void %}<span class="badge badge-muted">Аннулирована</span>
+                    {% else %}<span class="badge badge-danger">Не сдан</span>{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if not quiz.passed %}
+          <p class="muted small">
+            {% if quiz.locked_until %}Пауза до {{ quiz.locked_until | local_time }}.{% else %}Осталось попыток: {{ quiz.attempts_left }}.{% endif %}
+          </p>
+          {{ action("reset-quiz/" ~ section.id, "Сбросить попытки", confirm="Неудачные попытки будут аннулированы, слушатель сможет сдавать тест сразу. Продолжить?") }}
+        {% endif %}
+      {% else %}
+        <p class="muted">Попыток пока не было.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ static_url('js/admin.js') }}"></script>
+{% endblock %}

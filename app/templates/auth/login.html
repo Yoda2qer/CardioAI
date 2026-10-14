@@ -1,0 +1,23 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Вход{% endblock %}
+{% block card %}
+<h1>Вход</h1>
+<p class="muted">Продолжите обучение с того места, где остановились.</p>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="/login" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="field">
+    <span>Email</span>
+    <input type="email" name="email" value="{{ email }}" autocomplete="username" required autofocus>
+  </label>
+  <label class="field">
+    <span>Пароль</span>
+    <input type="password" name="password" autocomplete="current-password" required>
+  </label>
+  <button class="btn btn-primary btn-block" type="submit">Войти</button>
+</form>
+<p class="auth-links">
+  <a href="/forgot">Забыли пароль?</a>
+  <a href="/register">Регистрация</a>
+</p>
+{% endblock %}

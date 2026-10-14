@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Коды приглашения{% endblock %}
+{% block content %}
+<div class="container">
+  <h1>Администрирование</h1>
+  {% set active = "invites" %}
+  {% include "admin/_tabs.html" %}
+
+  {% if not settings.invite_required %}
+    <div class="alert alert-info">Сейчас регистрация открыта для всех (<code>REGISTRATION_MODE=open</code>), коды приглашения не проверяются.</div>
+  {% endif %}
+
+  <section class="card">
+    <h2>Новый код</h2>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/admin/invites" class="form form-row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="field">
+        <span>Код</span>
+        <input type="text" name="code" maxlength="64" placeholder="Оставьте пустым — сгенерируем">
+      </label>
+      <label class="field">
+        <span>Для кого</span>
+        <input type="text" name="note" maxlength="200" placeholder="Например: ординаторы, поток 2026">
+      </label>
+      <label class="field field-narrow">
+        <span>Лимит регистраций</span>
+        <input type="number" name="max_uses" min="1" placeholder="Без лимита">
+      </label>
+      <button class="btn btn-primary" type="submit">Создать</button>
+    </form>
+  </section>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th scope="col">Код</th><th scope="col">Для кого</th><th scope="col">Использован</th><th scope="col">Создан</th><th scope="col">Статус</th><th scope="col"><span class="visually-hidden">Действия</span></th></tr>
+      </thead>
+      <tbody>
+        {% for code in codes %}
+          <tr>
+            <td><code>{{ code.code }}</code></td>
+            <td>{{ code.note or "—" }}</td>
+            <td>{{ code.uses }}{% if code.max_uses %} из {{ code.max_uses }}{% endif %}</td>
+            <td>{{ code.created_at | local_time("%d.%m.%Y") }}</td>
+            <td>
+              {% if code.is_usable %}<span class="badge badge-success">Действует</span>
+              {% elif code.is_active %}<span class="badge badge-muted">Исчерпан</span>
+              {% else %}<span class="badge badge-danger">Отключён</span>{% endif %}
+            </td>
+            <td>
+              <form method="post" action="/admin/invites/{{ code.id }}/toggle" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-ghost btn-sm" type="submit">{{ "Отключить" if code.is_active else "Включить" }}</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="muted">Кодов пока нет. Создайте первый, чтобы слушатели могли зарегистрироваться.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

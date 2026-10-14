@@ -1,0 +1,160 @@
+packages: [pandas, scikit-learn]
+datasets: [heart_disease.csv]
+
+statement: |
+  Постройте первую полноценную модель: логистическую регрессию, оценивающую вероятность ИБС у пациента, направленного на ангиографию.
+
+  Данные загружены, разделены на обучающую и тестовую части, а конвейер подготовки признаков `preprocess` уже собран — он такой же, как в уроке о подготовке признаков.
+
+  1. Создайте `model` — конвейер `Pipeline` из двух шагов: `("prep", preprocess)` и `("clf", LogisticRegression(max_iter=1000))`. Обучите его на обучающей выборке.
+  2. `baseline_accuracy` — доля верных ответов на тестовой выборке у `DummyClassifier(strategy="most_frequent")`, обученного на обучающей выборке.
+  3. `test_accuracy` — доля верных ответов вашей модели на тестовой выборке.
+  4. `test_auc` — площадь под ROC-кривой на тестовой выборке (`roc_auc_score`). Ей нужны **вероятности** класса 1, а не готовые ответы. Подробно эту метрику разберём в следующем разделе; пока достаточно знать, что 0,5 — случайное угадывание, 1,0 — идеальное разделение.
+  5. `or_male` — отношение шансов для мужского пола: экспонента коэффициента при признаке `sex`. Названия признаков после подготовки выдаёт `model.named_steps["prep"].get_feature_names_out()`, коэффициенты лежат в `model.named_steps["clf"].coef_[0]`.
+  6. `prob_patient` — вероятность ИБС для пациента из таблицы `patient`.
+
+  ::: clinic Вопрос для размышления
+  Отношение шансов для мужского пола получится очень большим. Означает ли это, что мужской пол — причина ИБС? Вспомните, кого и по каким показаниям направляли на ангиографию в 1980-е годы.
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.dummy import DummyClassifier
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import accuracy_score, roc_auc_score
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  categorical = ["cp"]
+  binary = ["sex", "exang"]
+
+  X, y = hd[numeric + categorical + binary], hd["target"]
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.25, random_state=42, stratify=y
+  )
+
+  preprocess = ColumnTransformer([
+      ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler())]), numeric),
+      ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical),
+      ("bin", SimpleImputer(strategy="most_frequent"), binary),
+  ])
+
+  patient = pd.DataFrame([{
+      "age": 62, "trestbps": 140, "chol": 260, "thalach": 120, "oldpeak": 2.0,
+      "cp": 4, "sex": 1, "exang": 1,
+  }])
+
+  # 1. Конвейер: подготовка + логистическая регрессия
+  model = ...
+
+  # 2. Точка отсчёта
+  baseline_accuracy = ...
+
+  # 3. Доля верных ответов модели
+  test_accuracy = ...
+
+  # 4. Площадь под ROC-кривой
+  test_auc = ...
+
+  # 5. Отношение шансов для мужского пола
+  or_male = ...
+
+  # 6. Вероятность ИБС для пациента
+  prob_patient = ...
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.dummy import DummyClassifier
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import accuracy_score, roc_auc_score
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  categorical = ["cp"]
+  binary = ["sex", "exang"]
+
+  X, y = hd[numeric + categorical + binary], hd["target"]
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.25, random_state=42, stratify=y
+  )
+
+  preprocess = ColumnTransformer([
+      ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler())]), numeric),
+      ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical),
+      ("bin", SimpleImputer(strategy="most_frequent"), binary),
+  ])
+
+  patient = pd.DataFrame([{
+      "age": 62, "trestbps": 140, "chol": 260, "thalach": 120, "oldpeak": 2.0,
+      "cp": 4, "sex": 1, "exang": 1,
+  }])
+
+  model = Pipeline([("prep", preprocess), ("clf", LogisticRegression(max_iter=1000))])
+  model.fit(X_train, y_train)
+
+  baseline = DummyClassifier(strategy="most_frequent").fit(X_train, y_train)
+  baseline_accuracy = accuracy_score(y_test, baseline.predict(X_test))
+
+  test_accuracy = accuracy_score(y_test, model.predict(X_test))
+  test_auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+
+  names = list(model.named_steps["prep"].get_feature_names_out())
+  coefs = model.named_steps["clf"].coef_[0]
+  or_male = np.exp(coefs[names.index("bin__sex")])
+
+  prob_patient = model.predict_proba(patient)[0, 1]
+  print(dict(zip(names, np.exp(coefs).round(2).tolist())))
+
+checks:
+  - var: baseline_accuracy
+    type: approx
+    expected: 0.5522
+    tol: 0.001
+    label: Точка отсчёта
+    hint: Обучите DummyClassifier(strategy="most_frequent") на X_train, y_train и сравните его ответы на X_test с y_test функцией accuracy_score.
+  - var: test_accuracy
+    type: approx
+    expected: 0.8043
+    tol: 0.01
+    label: Доля верных ответов модели
+    hint: Используйте accuracy_score(y_test, model.predict(X_test)). Проверьте, что модель обучена на обучающей выборке, а LogisticRegression создана с max_iter=1000 и без других параметров.
+  - var: test_auc
+    type: approx
+    expected: 0.8978
+    tol: 0.01
+    label: Площадь под ROC-кривой
+    hint: В roc_auc_score передают вероятности — model.predict_proba(X_test)[:, 1], а не результат predict.
+  - var: or_male
+    type: approx
+    expected: 4.25
+    tol: 0.15
+    label: Отношение шансов для мужского пола
+    hint: Найдите позицию признака "bin__sex" в списке названий, возьмите коэффициент с тем же индексом и примените np.exp.
+  - var: prob_patient
+    type: approx
+    expected: 0.957
+    tol: 0.01
+    label: Вероятность ИБС у пациента
+    hint: model.predict_proba(patient) возвращает таблицу из одной строки и двух столбцов; нужен элемент [0, 1].

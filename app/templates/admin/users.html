@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Слушатели{% endblock %}
+{% block content %}
+<div class="container">
+  <h1>Администрирование</h1>
+  {% set active = "users" %}
+  {% include "admin/_tabs.html" %}
+
+  <section class="stats-row stats-row-plain" aria-label="Сводка">
+    <div class="stat"><span class="stat-value">{{ stats.students }}</span><span class="stat-label">{{ plural_word(stats.students, "слушатель", "слушателя", "слушателей") }}</span></div>
+    <div class="stat"><span class="stat-value">{{ stats.started }}</span><span class="stat-label">начали курс</span></div>
+    <div class="stat"><span class="stat-value">{{ stats.completed }}</span><span class="stat-label">завершили курс</span></div>
+    <div class="stat"><span class="stat-value">{{ stats.average }}%</span><span class="stat-label">средний прогресс</span></div>
+  </section>
+
+  <label class="field table-filter">
+    <span class="visually-hidden">Поиск по имени или email</span>
+    <input type="search" id="table-filter" placeholder="Поиск по имени или email">
+  </label>
+
+  <div class="table-wrap">
+    <table class="table" id="users-table">
+      <thead>
+        <tr>
+          <th scope="col">Слушатель</th>
+          <th scope="col">Прогресс</th>
+          <th scope="col">Тесты</th>
+          <th scope="col">Регистрация</th>
+          <th scope="col">Последний вход</th>
+          <th scope="col">Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          {% set person = row.user %}
+          <tr data-filter="{{ (person.full_name ~ ' ' ~ person.email) | lower }}">
+            <td>
+              <a class="table-link" href="/admin/users/{{ person.id }}">{{ person.full_name }}</a>
+              <span class="muted small">{{ person.email }}</span>
+            </td>
+            <td>
+              <div class="bar" role="img" aria-label="{{ row.percent }}%"><span style="width: {{ row.percent }}%"></span></div>
+              <span class="small">{{ row.percent }}%</span>
+            </td>
+            <td>{{ row.quizzes }} / {{ course.sections | length }}</td>
+            <td>{{ person.created_at | local_time("%d.%m.%Y") }}</td>
+            <td>{{ person.last_login_at | local_time }}</td>
+            <td>
+              {% if not person.is_active %}<span class="badge badge-danger">Заблокирован</span>
+              {% elif person.is_admin %}<span class="badge badge-accent">Администратор</span>
+              {% elif row.completed %}<span class="badge badge-success">Курс пройден</span>
+              {% else %}<span class="badge badge-muted">Учится</span>{% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="muted">Пока никто не зарегистрировался.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ static_url('js/admin.js') }}"></script>
+{% endblock %}

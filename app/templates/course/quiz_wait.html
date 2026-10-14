@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Тест: {{ section.title }}{% endblock %}
+{% block content %}
+<div class="container narrow">
+  <section class="state-card">
+    <div class="state-icon state-icon-warn">{{ icon("clock", 28) }}</div>
+    <h1>Попытки закончились</h1>
+    <p>
+      Вы использовали {{ plural(settings.quiz_max_attempts, "попытку", "попытки", "попыток") }} теста по разделу «{{ section.title }}».
+      Новая серия попыток откроется <strong>{{ status.locked_until | local_time }}</strong>.
+    </p>
+    <p class="muted">Используйте паузу, чтобы перечитать уроки раздела. Если нужно сдать раньше, попросите администратора сбросить попытки.</p>
+    <a class="btn btn-primary" href="/quiz/{{ section.id }}/result">Разбор последней попытки</a>
+    <a class="btn btn-ghost" href="/course">К программе курса</a>
+  </section>
+</div>
+{% endblock %}

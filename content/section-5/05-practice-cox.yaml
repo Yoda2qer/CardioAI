@@ -1,0 +1,148 @@
+packages: [pandas, statsmodels]
+datasets: [heart_failure.csv]
+
+statement: |
+  Постройте модель Кокса для смертности при сердечной недостаточности и выясните, какие факторы связаны с риском, если учитывать их одновременно.
+
+  Таблица загружена, функция `concordance_index(time, event, risk)` из урока определена, таблица `patients` содержит двух пациентов.
+
+  1. Обучите модель Кокса функцией `smf.phreg` с формулой `formula` (она уже записана) и сохраните результат в `result`. Индикатор события передайте параметром `status`.
+  2. Сделайте из коэффициентов Series с названиями признаков: `params = pd.Series(result.params, index=result.model.exog_names)`.
+  3. `hr_creatinine` — отношение рисков для креатинина, `ci_creatinine` — список из двух чисел: границы его 95% доверительного интервала (экспонента от `result.conf_int()` в строке креатинина).
+  4. `hr_ef_10` — отношение рисков при увеличении фракции выброса на 10 процентных пунктов.
+  5. `significant` — список названий признаков с p-значением меньше 0,05 (`result.pvalues`).
+  6. `c_index` — C-индекс модели на этих данных. Линейный предиктор для всех пациентов — `result.model.exog @ result.params`.
+  7. `relative_risk` — во сколько раз мгновенный риск первого пациента из таблицы `patients` выше, чем второго.
+
+  ::: clinic Что сравнить
+  Пол, курение и диабет вошли в модель, но отношения рисков для них близки к единице с широкими интервалами. Означает ли это, что курение безвредно для пациентов с сердечной недостаточностью? Вспомните урок о мультиколлинеарности: как связаны пол и курение в этих данных?
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  import statsmodels.formula.api as smf
+
+  hf = pd.read_csv("heart_failure.csv")
+  formula = ("time ~ age + ejection_fraction + serum_creatinine + serum_sodium"
+             " + sex + smoking + diabetes")
+
+  def concordance_index(time, event, risk):
+      time, event, risk = map(np.asarray, (time, event, risk))
+      concordant = comparable = 0.0
+      for i in np.flatnonzero(event):
+          later = time > time[i]
+          comparable += later.sum()
+          concordant += (risk[i] > risk[later]).sum() + 0.5 * (risk[i] == risk[later]).sum()
+      return concordant / comparable
+
+  patients = pd.DataFrame([
+      {"age": 70, "ejection_fraction": 25, "serum_creatinine": 1.8, "serum_sodium": 134,
+       "sex": 1, "smoking": 1, "diabetes": 1},
+      {"age": 60, "ejection_fraction": 40, "serum_creatinine": 1.1, "serum_sodium": 138,
+       "sex": 1, "smoking": 0, "diabetes": 0},
+  ])
+
+  # 1. Модель Кокса
+  result = ...
+
+  # 2. Коэффициенты с названиями
+  params = ...
+
+  # 3. Креатинин: HR и 95% ДИ
+  hr_creatinine = ...
+  ci_creatinine = ...
+
+  # 4. HR на 10 п. п. фракции выброса
+  hr_ef_10 = ...
+
+  # 5. Значимые факторы
+  significant = ...
+
+  # 6. C-индекс
+  c_index = ...
+
+  # 7. Отношение рисков двух пациентов
+  relative_risk = ...
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  import statsmodels.formula.api as smf
+
+  hf = pd.read_csv("heart_failure.csv")
+  formula = ("time ~ age + ejection_fraction + serum_creatinine + serum_sodium"
+             " + sex + smoking + diabetes")
+
+  def concordance_index(time, event, risk):
+      time, event, risk = map(np.asarray, (time, event, risk))
+      concordant = comparable = 0.0
+      for i in np.flatnonzero(event):
+          later = time > time[i]
+          comparable += later.sum()
+          concordant += (risk[i] > risk[later]).sum() + 0.5 * (risk[i] == risk[later]).sum()
+      return concordant / comparable
+
+  patients = pd.DataFrame([
+      {"age": 70, "ejection_fraction": 25, "serum_creatinine": 1.8, "serum_sodium": 134,
+       "sex": 1, "smoking": 1, "diabetes": 1},
+      {"age": 60, "ejection_fraction": 40, "serum_creatinine": 1.1, "serum_sodium": 138,
+       "sex": 1, "smoking": 0, "diabetes": 0},
+  ])
+
+  result = smf.phreg(formula, hf, status=hf["DEATH_EVENT"].to_numpy()).fit()
+  names = result.model.exog_names
+  params = pd.Series(result.params, index=names)
+
+  hr_creatinine = np.exp(params["serum_creatinine"])
+  ci = np.exp(result.conf_int())
+  ci_creatinine = list(ci[names.index("serum_creatinine")])
+
+  hr_ef_10 = np.exp(10 * params["ejection_fraction"])
+
+  pvalues = pd.Series(result.pvalues, index=names)
+  significant = list(pvalues[pvalues < 0.05].index)
+
+  c_index = concordance_index(hf["time"], hf["DEATH_EVENT"], result.model.exog @ result.params)
+
+  linear = patients[names].to_numpy() @ result.params
+  relative_risk = np.exp(linear[0] - linear[1])
+  print(np.exp(params).round(3))
+  print(significant, round(c_index, 3), round(relative_risk, 2))
+
+checks:
+  - var: hr_creatinine
+    type: approx
+    expected: 1.3902
+    tol: 0.003
+    label: HR для креатинина
+    hint: Отношение рисков — экспонента коэффициента; проверьте формулу и то, что status = hf["DEATH_EVENT"].
+  - var: ci_creatinine
+    type: list_approx
+    expected: [1.2054, 1.6033]
+    tol: 0.003
+    label: 95% ДИ для креатинина
+    hint: result.conf_int() возвращает массив границ для коэффициентов; возьмите строку креатинина и примените np.exp. Порядок строк совпадает с result.model.exog_names.
+  - var: hr_ef_10
+    type: approx
+    expected: 0.626
+    tol: 0.004
+    label: HR на 10 п. п. фракции выброса
+    hint: "Эффекты перемножаются: нужна экспонента от 10 × коэффициент, или HR в десятой степени."
+  - var: significant
+    type: set
+    expected: [age, ejection_fraction, serum_creatinine]
+    label: Факторы с p < 0,05
+    hint: result.pvalues стоят в том же порядке, что и result.model.exog_names. Отберите названия, для которых p меньше 0,05.
+  - var: c_index
+    type: approx
+    expected: 0.7233
+    tol: 0.003
+    label: C-индекс
+    hint: Передайте в concordance_index время, индикатор события и линейный предиктор result.model.exog @ result.params.
+  - var: relative_risk
+    type: approx
+    expected: 6.046
+    tol: 0.05
+    label: Отношение рисков двух пациентов
+    hint: Линейный предиктор пациента — сумма произведений его признаков (в порядке result.model.exog_names) на коэффициенты. Отношение рисков — экспонента разности предикторов первого и второго пациента.

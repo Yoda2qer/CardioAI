@@ -1,0 +1,44 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Регистрация{% endblock %}
+{% macro field_error(name) %}
+  {% if errors.get(name) %}<span class="field-error" role="alert">{{ errors[name] }}</span>{% endif %}
+{% endmacro %}
+{% block card %}
+<h1>Регистрация</h1>
+<p class="muted">Создайте учётную запись, чтобы проходить уроки и сохранять прогресс.</p>
+<form method="post" action="/register" class="form" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="field {{ 'has-error' if errors.get('full_name') }}">
+    <span>Фамилия, имя, отчество</span>
+    <input type="text" name="full_name" value="{{ form.get('full_name', '') }}" autocomplete="name" maxlength="150" required autofocus>
+    <small class="field-hint">Так ваше имя будет указано в сертификате.</small>
+    {{ field_error("full_name") }}
+  </label>
+  <label class="field {{ 'has-error' if errors.get('email') }}">
+    <span>Email</span>
+    <input type="email" name="email" value="{{ form.get('email', '') }}" autocomplete="username" required>
+    {{ field_error("email") }}
+  </label>
+  <label class="field {{ 'has-error' if errors.get('password') }}">
+    <span>Пароль</span>
+    <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+    <small class="field-hint">Не короче 8 символов, буквы вместе с цифрами или знаками.</small>
+    {{ field_error("password") }}
+  </label>
+  <label class="field {{ 'has-error' if errors.get('password2') }}">
+    <span>Пароль ещё раз</span>
+    <input type="password" name="password2" autocomplete="new-password" required>
+    {{ field_error("password2") }}
+  </label>
+  {% if settings.invite_required %}
+    <label class="field {{ 'has-error' if errors.get('invite_code') }}">
+      <span>Код приглашения</span>
+      <input type="text" name="invite_code" value="{{ form.get('invite_code', '') }}" autocomplete="off" required>
+      <small class="field-hint">Код выдаёт организатор обучения.</small>
+      {{ field_error("invite_code") }}
+    </label>
+  {% endif %}
+  <button class="btn btn-primary btn-block" type="submit">Зарегистрироваться</button>
+</form>
+<p class="auth-links"><span>Уже есть аккаунт?</span> <a href="/login">Войти</a></p>
+{% endblock %}

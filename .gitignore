@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Локальные настройки и данные
+.env
+instance/
+*.db
+*.sqlite3
+
+# Офлайн-копия Pyodide (скачивается скриптом scripts/fetch_pyodide.py)
+app/static/vendor/pyodide/
+
+# Временные файлы сборки PDF
+docs/_build/
+
+# Инструменты разработки
+.claude/
+.idea/
+.vscode/

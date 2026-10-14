@@ -1,0 +1,66 @@
+title: "CardioAI: Аналитика данных и машинное обучение"
+
+sections:
+  - id: s1
+    dir: section-1
+    title: Медицинские данные и разведочный анализ
+    description: Какими бывают клинические данные, как их безопасно хранить, проверять и показывать на графиках.
+    lessons:
+      - {id: s1-l1, type: theory, minutes: 12, file: 01-medical-data.md, title: "Медицинские данные и два наших датасета"}
+      - {id: s1-l2, type: theory, minutes: 12, file: 02-ethics.md, title: "Этика, деидентификация и правовые рамки"}
+      - {id: s1-l3, type: theory, minutes: 15, file: 03-pandas.md, title: "pandas для клинических таблиц"}
+      - {id: s1-l4, type: practice, minutes: 20, file: 04-practice-first-look.yaml, title: "Практика: первый осмотр данных о сердечной недостаточности"}
+      - {id: s1-l5, type: theory, minutes: 15, file: 05-data-quality.md, title: "Качество данных: пропуски, невозможные значения, выбросы"}
+      - {id: s1-l6, type: theory, minutes: 14, file: 06-visualization.md, title: "Визуализация клинических показателей"}
+      - {id: s1-l7, type: practice, minutes: 25, file: 07-practice-cleaning.yaml, title: "Практика: очистка данных об ишемической болезни сердца"}
+
+
+  - id: s2
+    dir: section-2
+    title: Статистика и подготовка признаков
+    description: Описательная статистика, сравнение групп пациентов, связи между показателями и подготовка таблицы к обучению модели.
+    lessons:
+      - {id: s2-l1, type: theory, minutes: 13, file: 01-descriptive.md, title: "Описательная статистика и распределения"}
+      - {id: s2-l2, type: theory, minutes: 15, file: 02-group-comparison.md, title: "Сравнение групп: тесты и ловушки p-значения"}
+      - {id: s2-l3, type: practice, minutes: 25, file: 03-practice-groups.yaml, title: "Практика: чем различаются выжившие и умершие пациенты"}
+      - {id: s2-l4, type: theory, minutes: 13, file: 04-correlation.md, title: "Корреляции, мультиколлинеарность и конфаундеры"}
+      - {id: s2-l5, type: theory, minutes: 15, file: 05-feature-preparation.md, title: "Подготовка признаков: кодирование, масштаб, пропуски"}
+      - {id: s2-l6, type: practice, minutes: 25, file: 06-practice-pipeline.yaml, title: "Практика: конвейер подготовки признаков"}
+
+  - id: s3
+    dir: section-3
+    title: Классические модели прогноза риска
+    description: От постановки задачи до логистической регрессии, деревьев решений и ансамблей на данных реальных пациентов.
+    lessons:
+      - {id: s3-l1, type: theory, minutes: 13, file: 01-ml-task.md, title: "Задача машинного обучения в медицине"}
+      - {id: s3-l2, type: theory, minutes: 15, file: 02-logistic-regression.md, title: "Логистическая регрессия и отношение шансов"}
+      - {id: s3-l3, type: practice, minutes: 25, file: 03-practice-logreg.yaml, title: "Практика: логистическая регрессия для диагностики ИБС"}
+      - {id: s3-l4, type: theory, minutes: 14, file: 04-knn-trees.md, title: "Метод ближайших соседей и деревья решений"}
+      - {id: s3-l5, type: practice, minutes: 25, file: 05-practice-tree.yaml, title: "Практика: дерево решений для прогноза исхода"}
+      - {id: s3-l6, type: theory, minutes: 14, file: 06-ensembles.md, title: "Ансамбли: случайный лес и градиентный бустинг"}
+      - {id: s3-l7, type: practice, minutes: 25, file: 07-practice-compare.yaml, title: "Практика: сравнение трёх моделей"}
+
+  - id: s4
+    dir: section-4
+    title: Оценка, валидация и интерпретация моделей
+    description: "Как понять, что модели можно верить: метрики, пороги, перекрёстная проверка, утечки данных и проверка на другой клинике."
+    lessons:
+      - {id: s4-l1, type: theory, minutes: 14, file: 01-confusion-matrix.md, title: "Матрица ошибок: чувствительность, специфичность, прогностическая ценность"}
+      - {id: s4-l2, type: theory, minutes: 14, file: 02-roc-threshold.md, title: "ROC-кривая, PR-кривая и выбор порога"}
+      - {id: s4-l3, type: practice, minutes: 25, file: 03-practice-metrics.yaml, title: "Практика: метрики и порог для модели ИБС"}
+      - {id: s4-l4, type: theory, minutes: 15, file: 04-validation-leakage.md, title: "Перекрёстная проверка, переобучение и утечки данных"}
+      - {id: s4-l5, type: theory, minutes: 14, file: 05-calibration-importance.md, title: "Калибровка и важность признаков"}
+      - {id: s4-l6, type: practice, minutes: 25, file: 06-practice-external.yaml, title: "Практика: проверка модели на другой клинике"}
+
+  - id: s5
+    dir: section-5
+    title: Выживаемость и ИИ в клинической практике
+    description: Анализ времени до события, модель Кокса и то, что отделяет работающую модель от пользы для пациента.
+    lessons:
+      - {id: s5-l1, type: theory, minutes: 13, file: 01-time-to-event.md, title: "Время до события и цензурирование"}
+      - {id: s5-l2, type: theory, minutes: 15, file: 02-kaplan-meier.md, title: "Кривые Каплана—Мейера и лог-ранговый тест"}
+      - {id: s5-l3, type: practice, minutes: 25, file: 03-practice-km.yaml, title: "Практика: выживаемость и фракция выброса"}
+      - {id: s5-l4, type: theory, minutes: 15, file: 04-cox.md, title: "Модель Кокса и отношение рисков"}
+      - {id: s5-l5, type: practice, minutes: 25, file: 05-practice-cox.yaml, title: "Практика: факторы риска в модели Кокса"}
+      - {id: s5-l6, type: theory, minutes: 13, file: 06-bias-fairness.md, title: "Смещения, справедливость и границы применимости"}
+      - {id: s5-l7, type: theory, minutes: 13, file: 07-deployment.md, title: "Внедрение ИИ в клинику: проверка, регулирование, ответственность"}

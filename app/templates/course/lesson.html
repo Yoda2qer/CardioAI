@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block content %}
+<div class="container lesson-layout">
+  {% set current = lesson.id %}
+  {% include "course/_sidebar.html" %}
+  <article class="lesson-main">
+    <header class="lesson-header">
+      <p class="eyebrow">Раздел {{ section.number }} · Урок {{ lesson.number }} из {{ section.lessons | length }}</p>
+      <h1>{{ lesson.title }}</h1>
+      <p class="lesson-tags">
+        <span class="tag">{{ icon("book", 14) }} Теория</span>
+        <span class="tag tag-time">{{ icon("clock", 14) }} {{ lesson.minutes }} мин</span>
+        {% if state == "done" %}<span class="tag tag-success">{{ icon("check", 14) }} Изучено</span>{% endif %}
+      </p>
+    </header>
+
+    <div class="prose">{{ lesson.html | safe }}</div>
+
+    <footer class="lesson-footer">
+      {% if prev_url %}
+        <a class="btn btn-secondary" href="{{ prev_url }}">{{ icon("arrow-left") }} Назад</a>
+      {% else %}<span></span>{% endif %}
+      {% if state == "done" %}
+        <a class="btn btn-primary" href="{{ next_url }}">Дальше {{ icon("arrow-right") }}</a>
+      {% else %}
+        <form method="post" action="/lesson/{{ lesson.id }}/complete">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-primary" type="submit">{{ icon("check") }} Изучено, дальше</button>
+        </form>
+      {% endif %}
+    </footer>
+  </article>
+</div>
+{% endblock %}

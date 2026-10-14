@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Сертификат{% endblock %}
+{% block body_class %}page-certificate{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="certificate-actions no-print">
+    <a class="btn btn-ghost" href="/course">{{ icon("arrow-left") }} К курсу</a>
+    <button class="btn btn-primary" type="button" id="print-btn">{{ icon("print") }} Распечатать или сохранить в PDF</button>
+  </div>
+
+  <section class="certificate" aria-label="Сертификат">
+    <div class="certificate-inner">
+      <div class="certificate-brand">{{ logo(44) }}<span class="brand-name">Cardio<span class="brand-accent">AI</span></span></div>
+      <p class="certificate-kind">Сертификат</p>
+      <p class="certificate-line">подтверждает, что</p>
+      <p class="certificate-name">{{ holder.full_name }}</p>
+      <p class="certificate-line">успешно освоил(а) учебный курс</p>
+      <p class="certificate-course">«{{ course.title }}»</p>
+
+      <table class="certificate-scores">
+        <caption class="visually-hidden">Результаты тестов по разделам</caption>
+        <tbody>
+          {% for section in course.sections %}
+            {% set attempt = progress.quiz[section.id].passing_attempt %}
+            <tr>
+              <th scope="row">{{ section.number }}. {{ section.title }}</th>
+              <td>{{ attempt.score }} / {{ attempt.total }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="certificate-footer">
+        <div><span class="muted">Дата выдачи</span><strong>{{ certificate.issued_at | local_time("%d.%m.%Y") }}</strong></div>
+        <div><span class="muted">Номер</span><strong>{{ certificate.number }}</strong></div>
+        <div><span class="muted">Проверка подлинности</span><strong>{{ settings.base_url.rstrip("/") }}/verify/{{ certificate.number }}</strong></div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ static_url('js/print.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block body_class %}page-practice{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ static_url('vendor/codemirror/codemirror.min.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container practice-layout">
+  <header class="lesson-header">
+    <a class="sidebar-back" href="/course">{{ icon("arrow-left", 16) }} Все разделы</a>
+    <p class="eyebrow">Раздел {{ section.number }} · Урок {{ lesson.number }} из {{ section.lessons | length }}</p>
+    <h1>{{ lesson.title }}</h1>
+    <p class="lesson-tags">
+      <span class="tag tag-practice">{{ icon("code", 14) }} Практика</span>
+      <span class="tag tag-time">{{ icon("clock", 14) }} {{ lesson.minutes }} мин</span>
+      <span class="tag tag-success" id="done-tag" {% if state != "done" %}hidden{% endif %}>{{ icon("check", 14) }} Выполнено</span>
+    </p>
+  </header>
+
+  <div class="practice-grid">
+    <section class="practice-statement prose" aria-label="Условие задания">
+      {{ practice.statement_html | safe }}
+      {% if practice.datasets %}
+        <p class="muted small">
+          Файлы данных:
+          {% for name in practice.datasets %}<a href="/static/data/{{ name }}" download>{{ name }}</a>{{ ", " if not loop.last }}{% endfor %}
+        </p>
+      {% endif %}
+    </section>
+
+    <section class="practice-work" aria-label="Редактор кода">
+      <div class="editor-toolbar">
+        <span class="runtime-status" id="runtime-status" role="status">Среда Python не загружена</span>
+        <span class="toolbar-actions">
+          <button class="btn btn-ghost btn-sm" type="button" id="reset-btn" title="Вернуть исходный код задания">{{ icon("refresh", 16) }} Сбросить</button>
+          <button class="btn btn-secondary btn-sm" type="button" id="run-btn">{{ icon("play", 16) }} Запустить</button>
+          <button class="btn btn-primary btn-sm" type="button" id="check-btn">{{ icon("check", 16) }} Проверить</button>
+        </span>
+      </div>
+      <div class="editor" id="editor"></div>
+      <p class="muted small editor-hint">Ctrl+Enter — запустить, Ctrl+/ — закомментировать строку, Esc — выйти из редактора.</p>
+
+      <div class="output-panel">
+        <h2>Вывод программы</h2>
+        <pre class="output" id="output" aria-live="polite">Нажмите «Запустить», чтобы выполнить код. Первый запуск загружает среду Python и может занять до минуты.</pre>
+        <div id="plots" class="plots"></div>
+      </div>
+
+      <div class="checks-panel" id="checks-panel" hidden>
+        <h2>Результат проверки</h2>
+        <ul class="checks" id="checks"></ul>
+      </div>
+    </section>
+  </div>
+
+  <footer class="lesson-footer">
+    {% if prev_url %}<a class="btn btn-secondary" href="{{ prev_url }}">{{ icon("arrow-left") }} Назад</a>{% else %}<span></span>{% endif %}
+    <a class="btn btn-primary {{ 'is-disabled' if state != 'done' }}" id="next-btn" href="{{ next_url }}"
+       {% if state != "done" %}aria-disabled="true" tabindex="-1"{% endif %}>Дальше {{ icon("arrow-right") }}</a>
+  </footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="application/json" id="practice-config">{{ dict(
+  config,
+  csrfToken=csrf_token,
+  userId=user.id,
+  workerUrl=static_url("js/pyodide-worker.js"),
+  harnessUrl=static_url("py/harness.py"),
+) | tojson }}</script>
+<script src="{{ static_url('vendor/codemirror/codemirror.min.js') }}"></script>
+<script src="{{ static_url('vendor/codemirror/python.min.js') }}"></script>
+<script src="{{ static_url('vendor/codemirror/matchbrackets.min.js') }}"></script>
+<script src="{{ static_url('vendor/codemirror/closebrackets.min.js') }}"></script>
+<script src="{{ static_url('vendor/codemirror/comment.min.js') }}"></script>
+<script src="{{ static_url('js/practice.js') }}"></script>
+{% endblock %}

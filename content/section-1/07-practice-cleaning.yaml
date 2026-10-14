@@ -1,0 +1,121 @@
+packages: [pandas, matplotlib]
+datasets: [heart_disease.csv]
+
+statement: |
+  Таблица Heart Disease собрана в четырёх клиниках и требует чистки, прежде чем с ней можно будет работать. Пройдите шаги из урока о качестве данных — **в указанном порядке**: от него зависят ответы.
+
+  Таблица загружена в переменную `hd`.
+
+  1. `n_missing_ca` — число пропусков в столбце `ca`.
+  2. `n_zero_chol` — число пациентов, у которых холестерин (`chol`) равен нулю.
+  3. Замените нули в столбцах `chol` и `trestbps` на пропуски (`np.nan`) прямо в таблице `hd`. После этого сохраните:
+     - `chol_missing` — число пропусков в `chol`;
+     - `mean_chol` — средний холестерин.
+  4. Удалите полные дубликаты строк и сохраните результат в новую таблицу `clean`. Запишите число её строк в `n_rows_clean`.
+  5. Добавьте в `clean` столбец `target`: 1, если `num` больше нуля (ИБС подтверждена), иначе 0. Сохраните долю пациентов с ИБС в `prevalence`.
+  6. `max_prevalence_clinic` — название клиники (строка из столбца `clinic`), где доля пациентов с ИБС самая высокая.
+  7. Постройте гистограмму холестерина по таблице `clean` и убедитесь, что столбика около нуля больше нет. График не проверяется автоматически.
+
+  ::: clinic На что обратить внимание
+  Сравните средний холестерин до и после замены нулей, а долю ИБС — между клиниками. Различие распространённости болезни между центрами ещё не раз встретится нам в курсе: от него зависит, насколько переносима модель из одной клиники в другую.
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+
+  hd = pd.read_csv("heart_disease.csv")
+  print("Средний холестерин до очистки:", round(hd["chol"].mean(), 1))
+
+  # 1. Пропуски в ca
+  n_missing_ca = ...
+
+  # 2. Нулевой холестерин
+  n_zero_chol = ...
+
+  # 3. Нули -> пропуски в chol и trestbps
+  ...
+  chol_missing = ...
+  mean_chol = ...
+
+  # 4. Удаление дубликатов
+  clean = ...
+  n_rows_clean = ...
+
+  # 5. Целевая переменная и распространённость ИБС
+  ...
+  prevalence = ...
+
+  # 6. Клиника с наибольшей долей ИБС
+  max_prevalence_clinic = ...
+
+  # 7. Гистограмма холестерина
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+
+  hd = pd.read_csv("heart_disease.csv")
+
+  n_missing_ca = hd["ca"].isna().sum()
+  n_zero_chol = (hd["chol"] == 0).sum()
+
+  hd["chol"] = hd["chol"].replace(0, np.nan)
+  hd["trestbps"] = hd["trestbps"].replace(0, np.nan)
+  chol_missing = hd["chol"].isna().sum()
+  mean_chol = hd["chol"].mean()
+
+  clean = hd.drop_duplicates().copy()
+  n_rows_clean = len(clean)
+
+  clean["target"] = (clean["num"] > 0).astype(int)
+  prevalence = clean["target"].mean()
+
+  max_prevalence_clinic = clean.groupby("clinic")["target"].mean().idxmax()
+
+  fig, ax = plt.subplots()
+  ax.hist(clean["chol"].dropna(), bins=30)
+  ax.set_xlabel("Холестерин, мг/дл")
+  ax.set_ylabel("Число пациентов")
+  plt.show()
+
+checks:
+  - var: n_missing_ca
+    type: equal
+    expected: 611
+    label: Пропуски в ca
+    hint: Используйте hd["ca"].isna().sum().
+  - var: n_zero_chol
+    type: equal
+    expected: 172
+    label: Нулевой холестерин
+    hint: Посчитайте строки, где chol == 0. Делать это нужно до замены нулей на пропуски.
+  - var: chol_missing
+    type: equal
+    expected: 202
+    label: Пропуски в chol после замены
+    hint: После замены нулей пропусков становится больше — к исходным добавляются бывшие нули. Проверьте, что результат replace сохранён обратно в hd["chol"].
+  - var: mean_chol
+    type: approx
+    expected: 246.83
+    tol: 0.05
+    label: Средний холестерин после замены
+    hint: Среднее считается по таблице hd после замены нулей; пропуски метод mean() не учитывает.
+  - var: n_rows_clean
+    type: equal
+    expected: 918
+    label: Число строк после удаления дубликатов
+    hint: Метод drop_duplicates() возвращает новую таблицу — сохраните её в clean. Удалять дубликаты нужно после замены нулей.
+  - var: prevalence
+    type: approx
+    expected: 0.5534
+    tol: 0.0005
+    label: Доля пациентов с ИБС
+    hint: target равен 1 при num > 0. Долю считайте по таблице clean, а не по hd.
+  - var: max_prevalence_clinic
+    type: equal
+    expected: switzerland
+    label: Клиника с наибольшей долей ИБС
+    hint: Сгруппируйте clean по clinic, возьмите среднее target и найдите индекс максимума методом idxmax().

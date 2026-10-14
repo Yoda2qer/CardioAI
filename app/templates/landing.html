@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Аналитика данных и машинное обучение{% endblock %}
+{% block body_class %}page-landing{% endblock %}
+{% block content %}
+{% set lessons = course.lessons %}
+{% set practice_count = lessons | selectattr("is_practice") | list | length %}
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-text">
+      <p class="eyebrow">Курс для молодых медицинских работников</p>
+      <h1>Аналитика данных и машинное обучение в кардиологии</h1>
+      <p class="hero-lead">
+        От первой таблицы пациентов до модели прогноза риска и кривых выживаемости.
+        Все примеры и задания построены на реальных открытых клинических данных.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-light btn-lg" href="/register">Начать обучение</a>
+        <a class="btn btn-outline-light btn-lg" href="/login">У меня уже есть аккаунт</a>
+      </div>
+    </div>
+    <svg class="hero-ecg" viewBox="0 0 600 220" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 130h90l14-10 12 10h30l10-70 16 130 12-60h36l18-22 20 22h60l10-70 16 130 12-60h36l18-22 20 22h110"
+            fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</section>
+
+<section class="container stats-row" aria-label="Курс в цифрах">
+  <div class="stat"><span class="stat-value">{{ course.sections | length }}</span><span class="stat-label">{{ plural_word(course.sections | length, "раздел", "раздела", "разделов") }}</span></div>
+  <div class="stat"><span class="stat-value">{{ lessons | length }}</span><span class="stat-label">{{ plural_word(lessons | length, "урок", "урока", "уроков") }}</span></div>
+  <div class="stat"><span class="stat-value">{{ practice_count }}</span><span class="stat-label">{{ plural_word(practice_count, "практика", "практики", "практик") }} с кодом</span></div>
+  <div class="stat"><span class="stat-value">1219</span><span class="stat-label">реальных пациентов в данных</span></div>
+</section>
+
+<section class="container section-block">
+  <h2>Как устроено обучение</h2>
+  <div class="feature-grid">
+    <article class="feature">
+      <div class="feature-icon">{{ icon("book", 22) }}</div>
+      <h3>Теория на клинических примерах</h3>
+      <p>Короткие уроки на 10–15 минут. Каждое понятие статистики и машинного обучения объясняется на данных пациентов, а не на абстрактных числах.</p>
+    </article>
+    <article class="feature">
+      <div class="feature-icon">{{ icon("code", 22) }}</div>
+      <h3>Практика прямо в браузере</h3>
+      <p>Python запускается на странице урока: устанавливать ничего не нужно. Решение проверяется автоматически, с подсказками по каждому пункту.</p>
+    </article>
+    <article class="feature">
+      <div class="feature-icon">{{ icon("quiz", 22) }}</div>
+      <h3>Тест после каждого раздела</h3>
+      <p>15 вопросов, проходной балл {{ settings.quiz_pass_percent }}%. Следующий раздел открывается после сдачи, а в конце курса вы получаете сертификат.</p>
+    </article>
+  </div>
+</section>
+
+<section class="container section-block">
+  <h2>Программа курса</h2>
+  <div class="program">
+    {% for section in course.sections %}
+      <article class="program-item">
+        <div class="program-number">{{ section.number }}</div>
+        <div>
+          <h3>{{ section.title }}</h3>
+          <p>{{ section.description }}</p>
+          <p class="muted small">
+            {{ plural(section.lessons | length, "урок", "урока", "уроков") }},
+            из них {{ plural(section.lessons | selectattr("is_practice") | list | length, "практический", "практических", "практических") }} · тест
+          </p>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="container section-block">
+  <h2>На каких данных мы учимся</h2>
+  <div class="dataset-grid">
+    <article class="dataset">
+      <div class="feature-icon">{{ icon("database", 22) }}</div>
+      <h3>Heart Failure Clinical Records</h3>
+      <p>299 пациентов с сердечной недостаточностью: лабораторные показатели, фракция выброса, срок наблюдения и исход.</p>
+    </article>
+    <article class="dataset">
+      <div class="feature-icon">{{ icon("database", 22) }}</div>
+      <h3>Heart Disease</h3>
+      <p>920 пациентов четырёх клиник, обследованных на ишемическую болезнь сердца, — с настоящими пропусками и ошибками в данных.</p>
+    </article>
+  </div>
+  <p class="muted small">Оба набора обезличены и опубликованы в UCI Machine Learning Repository по лицензии CC BY 4.0.</p>
+</section>
+
+<section class="container cta">
+  <h2>Готовы начать?</h2>
+  {% if settings.invite_required %}
+    <p>Для регистрации понадобится код приглашения — его выдаёт организатор обучения.</p>
+  {% else %}
+    <p>Регистрация занимает минуту, курс открывается сразу после неё.</p>
+  {% endif %}
+  <a class="btn btn-primary btn-lg" href="/register">Зарегистрироваться</a>
+</section>
+{% endblock %}
