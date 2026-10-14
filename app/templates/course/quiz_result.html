@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Результат теста{% endblock %}
+{% block content %}
+<div class="container lesson-layout">
+  {% set current = "quiz" %}
+  {% include "course/_sidebar.html" %}
+  <div class="lesson-main">
+    <header class="lesson-header">
+      <p class="eyebrow">Раздел {{ section.number }} · Результат теста</p>
+      <h1>{{ section.title }}</h1>
+    </header>
+
+    <section class="result-card {{ 'is-passed' if attempt.passed else 'is-failed' }}">
+      <div class="result-score">
+        <span class="result-value">{{ attempt.score }}<small> / {{ attempt.total }}</small></span>
+        <span class="result-percent">{{ percent }}%</span>
+      </div>
+      <div class="result-text">
+        {% if attempt.passed %}
+          <h2>Тест сдан</h2>
+          <p>Проходной балл — {{ settings.quiz_pass_percent }}%. {% if next_section %}Раздел «{{ next_section.title }}» открыт.{% else %}Это был последний раздел курса.{% endif %}</p>
+          {% if progress.completed %}
+            <a class="btn btn-primary" href="/certificate">{{ icon("award") }} Получить сертификат</a>
+          {% elif next_section %}
+            <a class="btn btn-primary" href="/lesson/{{ next_section.lessons[0].id }}">К следующему разделу {{ icon("arrow-right") }}</a>
+          {% endif %}
+        {% else %}
+          <h2>Пока не сдан</h2>
+          <p>Нужно набрать не меньше {{ settings.quiz_pass_percent }}%. Попытка от {{ attempt.created_at | local_time }}.</p>
+          {% if status.can_attempt %}
+            <p>Осталось попыток: <strong>{{ status.attempts_left }}</strong>.</p>
+            <a class="btn btn-primary" href="/quiz/{{ section.id }}">Попробовать ещё раз</a>
+          {% elif status.locked_until %}
+            <p>Попытки закончились. Новая серия откроется <strong>{{ status.locked_until | local_time }}</strong>.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </section>
+
+    {% if attempt.passed %}
+      <h2 class="block-title">Разбор ответов</h2>
+      {% for item in review %}
+        {% set question = item.question %}
+        <article class="question review {{ 'is-ok' if item.ok else 'is-wrong' }}">
+          <h3>
+            <span class="question-number">{{ loop.index }}</span>
+            <span class="question-text">{{ question.text_html | safe }}</span>
+          </h3>
+          <ul class="options review-options">
+            {% for option_html in question.options_html %}
+              {% set is_correct = loop.index0 in question.correct %}
+              {% set is_chosen = loop.index0 in item.chosen %}
+              <li class="option {{ 'is-correct' if is_correct }} {{ 'is-chosen' if is_chosen }}">
+                <span class="option-mark" aria-hidden="true">{% if is_correct %}{{ icon("check", 14) }}{% elif is_chosen %}{{ icon("x", 14) }}{% endif %}</span>
+                <span>{{ option_html | safe }}</span>
+                <span class="visually-hidden">
+                  {% if is_correct and is_chosen %}— верный вариант, вы его выбрали
+                  {% elif is_correct %}— верный вариант, вы его не выбрали
+                  {% elif is_chosen %}— неверный вариант, вы его выбрали{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="explanation"><strong>Пояснение.</strong> {{ question.explanation_html | safe }}</p>
+        </article>
+      {% endfor %}
+    {% else %}
+      {% set wrong = review | rejectattr("ok") | list %}
+      <h2 class="block-title">Что повторить</h2>
+      <p class="muted">Правильные ответы откроются после успешной сдачи. Ниже — вопросы с ошибками и уроки, где разобрана тема.</p>
+      <ul class="wrong-list">
+        {% for item in wrong %}
+          <li>
+            <span class="question-text">{{ item.question.text_html | safe }}</span>
+            <a href="/lesson/{{ item.lesson.id }}">{{ icon("book", 14) }} Урок {{ item.lesson.number }}. {{ item.lesson.title }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

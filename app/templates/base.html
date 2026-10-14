@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CardioAI{% endblock %} · CardioAI</title>
+  <link rel="icon" href="{{ static_url('img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ static_url('css/main.css') }}">
+  <script src="{{ static_url('js/theme.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="{{ '/course' if user else '/' }}">
+      {{ logo() }}
+      <span class="brand-name">Cardio<span class="brand-accent">AI</span></span>
+    </a>
+    <nav class="site-nav" aria-label="Основная навигация">
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Тёмная тема">
+        {{ icon("moon", 17) }}{{ icon("sun", 17) }}
+      </button>
+      {% if user %}
+        <a href="/course" {% if request.url.path == '/course' %}aria-current="page"{% endif %}>Курс</a>
+        {% if user.is_admin %}
+          <a href="/admin" {% if request.url.path.startswith('/admin') %}aria-current="page"{% endif %}>Слушатели</a>
+        {% endif %}
+        <a class="nav-user" href="/profile" {% if request.url.path.startswith('/profile') %}aria-current="page"{% endif %}>
+          {{ icon("user", 16) }}<span>{{ user.full_name.split()[0] }}</span>
+        </a>
+        <form method="post" action="/logout" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-ghost btn-sm" type="submit">Выйти</button>
+        </form>
+      {% else %}
+        <a href="/login">Войти</a>
+        <a class="btn btn-primary btn-sm" href="/register">Регистрация</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="site-main">
+  {% set flashes = pop_flashes(request) %}
+  {% if flashes %}
+    <div class="container flashes">
+      {% for item in flashes %}
+        <div class="alert alert-{{ item.kind }}" role="status">{{ item.message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p>Курс учебный. Модели и выводы из уроков не предназначены для принятия клинических решений.</p>
+    <p class="muted">Данные: UCI Machine Learning Repository, CC BY 4.0 · Материалы курса: CC BY 4.0</p>
+  </div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

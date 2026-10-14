@@ -1,0 +1,157 @@
+packages: [pandas, scikit-learn]
+datasets: [heart_failure.csv]
+
+statement: |
+  Постройте дерево решений, предсказывающее смерть пациента с сердечной недостаточностью, и убедитесь на собственных числах, как глубина дерева приводит к переобучению.
+
+  Данные загружены. Признаки — все столбцы, кроме срока наблюдения `time` и исхода.
+
+  1. Разделите данные: `train_test_split` с `test_size=0.3`, `random_state=1`, `stratify=y`. Сохраните результат в `X_train`, `X_test`, `y_train`, `y_test`.
+  2. Обучите `tree` — `DecisionTreeClassifier(max_depth=3, random_state=0)`. Сохраните долю верных ответов на обучающей и тестовой выборках в `train_acc` и `test_acc`.
+  3. Выясните, какой вопрос дерево задаёт первым:
+     - `root_feature` — название признака в корне дерева;
+     - `root_threshold` — порог для этого признака.
+
+     Номер признака в корне хранится в `tree.tree_.feature[0]`, порог — в `tree.tree_.threshold[0]`.
+  4. `n_leaves` — число листьев дерева (`get_n_leaves()`).
+  5. Обучите `deep_tree` — такое же дерево без ограничения глубины (`random_state=0`). Сохраните `deep_train_acc` и `deep_test_acc`.
+  6. `baseline_acc` — доля верных ответов на тестовой выборке, если каждому пациенту предсказывать «выживет».
+  7. `risk_patient` — вероятность смерти, которую дерево `tree` даёт пациенту из таблицы `patient`.
+
+  Напечатайте правила дерева функцией `export_text` и сравните три числа: `test_acc`, `deep_test_acc` и `baseline_acc`.
+
+  ::: note Откуда у дерева вероятность
+  Пациент попадает в один из листьев. Вероятность события — это доля умерших среди обучающих пациентов того же листа. Поэтому дерево выдаёт лишь столько разных значений вероятности, сколько у него листьев.
+  :::
+
+starter: |
+  import pandas as pd
+  from sklearn.model_selection import train_test_split
+  from sklearn.tree import DecisionTreeClassifier, export_text
+
+  hf = pd.read_csv("heart_failure.csv")
+  features = [c for c in hf.columns if c not in ("time", "DEATH_EVENT")]
+  X, y = hf[features], hf["DEATH_EVENT"]
+
+  patient = pd.DataFrame([{
+      "age": 70, "anaemia": 0, "creatinine_phosphokinase": 300, "diabetes": 1,
+      "ejection_fraction": 40, "high_blood_pressure": 1, "platelets": 250000,
+      "serum_creatinine": 1.2, "serum_sodium": 137, "sex": 1, "smoking": 0,
+  }])
+
+  # 1. Разбиение
+  X_train, X_test, y_train, y_test = ...
+
+  # 2. Дерево глубины 3
+  tree = ...
+  train_acc = ...
+  test_acc = ...
+
+  # 3. Первый вопрос дерева
+  root_feature = ...
+  root_threshold = ...
+
+  # 4. Число листьев
+  n_leaves = ...
+
+  # 5. Дерево без ограничения глубины
+  deep_tree = ...
+  deep_train_acc = ...
+  deep_test_acc = ...
+
+  # 6. Точка отсчёта
+  baseline_acc = ...
+
+  # 7. Вероятность смерти для пациента
+  risk_patient = ...
+
+solution: |
+  import pandas as pd
+  from sklearn.model_selection import train_test_split
+  from sklearn.tree import DecisionTreeClassifier, export_text
+
+  hf = pd.read_csv("heart_failure.csv")
+  features = [c for c in hf.columns if c not in ("time", "DEATH_EVENT")]
+  X, y = hf[features], hf["DEATH_EVENT"]
+
+  patient = pd.DataFrame([{
+      "age": 70, "anaemia": 0, "creatinine_phosphokinase": 300, "diabetes": 1,
+      "ejection_fraction": 40, "high_blood_pressure": 1, "platelets": 250000,
+      "serum_creatinine": 1.2, "serum_sodium": 137, "sex": 1, "smoking": 0,
+  }])
+
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.3, random_state=1, stratify=y
+  )
+
+  tree = DecisionTreeClassifier(max_depth=3, random_state=0).fit(X_train, y_train)
+  train_acc = tree.score(X_train, y_train)
+  test_acc = tree.score(X_test, y_test)
+
+  root_feature = features[tree.tree_.feature[0]]
+  root_threshold = tree.tree_.threshold[0]
+  n_leaves = tree.get_n_leaves()
+
+  deep_tree = DecisionTreeClassifier(random_state=0).fit(X_train, y_train)
+  deep_train_acc = deep_tree.score(X_train, y_train)
+  deep_test_acc = deep_tree.score(X_test, y_test)
+
+  baseline_acc = 1 - y_test.mean()
+  risk_patient = tree.predict_proba(patient)[0, 1]
+
+  print(export_text(tree, feature_names=features))
+  print(test_acc, deep_test_acc, baseline_acc)
+
+checks:
+  - var: train_acc
+    type: approx
+    expected: 0.8325
+    tol: 0.005
+    label: Дерево глубины 3, обучающая выборка
+    hint: Проверьте параметры разбиения (test_size=0.3, random_state=1, stratify=y) и дерева (max_depth=3, random_state=0). Долю верных ответов даёт tree.score(X_train, y_train).
+  - var: test_acc
+    type: approx
+    expected: 0.7222
+    tol: 0.005
+    label: Дерево глубины 3, тестовая выборка
+    hint: Используйте tree.score(X_test, y_test).
+  - var: root_feature
+    type: equal
+    expected: ejection_fraction
+    label: Признак в корне дерева
+    hint: Номер признака в корне — tree.tree_.feature[0]; название получите как features[номер].
+  - var: root_threshold
+    type: approx
+    expected: 27.5
+    tol: 0.01
+    label: Порог в корне дерева
+    hint: Порог первого разбиения хранится в tree.tree_.threshold[0].
+  - var: n_leaves
+    type: equal
+    expected: 8
+    label: Число листьев
+    hint: Вызовите tree.get_n_leaves().
+  - var: deep_train_acc
+    type: approx
+    expected: 1.0
+    tol: 0.0001
+    label: Дерево без ограничений, обучающая выборка
+    hint: Создайте DecisionTreeClassifier(random_state=0) без max_depth и обучите на обучающей выборке.
+  - var: deep_test_acc
+    type: approx
+    expected: 0.6667
+    tol: 0.005
+    label: Дерево без ограничений, тестовая выборка
+    hint: Используйте deep_tree.score(X_test, y_test).
+  - var: baseline_acc
+    type: approx
+    expected: 0.6778
+    tol: 0.001
+    label: Точка отсчёта
+    hint: Если всем предсказывать 0, верными окажутся ответы для всех выживших — их доля равна 1 - y_test.mean().
+  - var: risk_patient
+    type: approx
+    expected: 0.1168
+    tol: 0.005
+    label: Вероятность смерти у пациента
+    hint: Используйте tree.predict_proba(patient)[0, 1] — именно дерево глубины 3.

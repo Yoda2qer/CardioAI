@@ -1,0 +1,24 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Профиль{% endblock %}
+{% block card %}
+<h1>Профиль</h1>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="/profile" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="field">
+    <span>Фамилия, имя, отчество</span>
+    <input type="text" name="full_name" value="{{ user.full_name }}" autocomplete="name" maxlength="150" required>
+    <small class="field-hint">Так ваше имя будет указано в сертификате.</small>
+  </label>
+  <label class="field">
+    <span>Email</span>
+    <input type="email" value="{{ user.email }}" disabled>
+  </label>
+  <button class="btn btn-primary btn-block" type="submit">Сохранить</button>
+</form>
+<dl class="profile-meta">
+  <div><dt>Роль</dt><dd>{{ "Администратор" if user.is_admin else "Слушатель" }}</dd></div>
+  <div><dt>Регистрация</dt><dd>{{ user.created_at | local_time("%d.%m.%Y") }}</dd></div>
+</dl>
+<p class="auth-links"><a href="/profile/password">Сменить пароль</a><a href="/course">К курсу</a></p>
+{% endblock %}

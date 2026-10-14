@@ -1,0 +1,188 @@
+packages: [pandas, scikit-learn]
+datasets: [heart_disease.csv]
+
+statement: |
+  Самая строгая проверка модели — **внешняя валидация**: применение к пациентам другого учреждения. Вы разработаете модель диагностики ИБС на данных двух клиник и проверите её в двух других, где она не обучалась.
+
+  Данные загружены, функция `make_model()` возвращает новый необученный конвейер с логистической регрессией.
+
+  1. Отберите в таблицу `development` пациентов клиник `cleveland` и `hungary` — на них модель разрабатывается. Число строк сохраните в `n_development`.
+  2. `auc_internal` — средний AUC перекрёстной проверки (`cross_val_score` с `cv=cv`, `scoring="roc_auc"`) на таблице `development`. Это оценка, которую получили бы сами разработчики.
+  3. Обучите `model = make_model()` на всей таблице `development`.
+  4. Проверьте модель на пациентах клиники `long_beach`:
+     - `auc_long_beach` — площадь под ROC-кривой;
+     - `mean_risk_long_beach` — средняя предсказанная вероятность ИБС;
+     - `prevalence_long_beach` — реальная доля пациентов с ИБС;
+     - `sensitivity_long_beach` и `specificity_long_beach` — при пороге 0,5.
+  5. `auc_switzerland` — площадь под ROC-кривой на пациентах клиники `switzerland`.
+  6. `auc_drop` — разность `auc_internal` и `auc_long_beach`: сколько различающей способности модель потеряла при переносе.
+
+  Признаки для модели перечислены в списке `features`, исход — в столбце `target`.
+
+  ::: clinic Что обсудить после решения
+  Сравните `mean_risk_long_beach` и `prevalence_long_beach`: завышает модель риск или занижает? Вспомните из первого раздела, чем данные Лонг-Бич и швейцарских клиник отличались от кливлендских: доля пропусков, записанный нулём холестерин, состав пациентов. Какие из этих различий могли повлиять на результат?
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import confusion_matrix, roc_auc_score
+  from sklearn.model_selection import StratifiedKFold, cross_val_score
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  features = numeric + ["cp", "sex", "exang"]
+
+  def make_model():
+      preprocess = ColumnTransformer([
+          ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                            ("scaler", StandardScaler())]), numeric),
+          ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), ["cp"]),
+          ("bin", SimpleImputer(strategy="most_frequent"), ["sex", "exang"]),
+      ])
+      return Pipeline([("prep", preprocess), ("clf", LogisticRegression(max_iter=1000))])
+
+  cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+  # 1. Данные для разработки
+  development = ...
+  n_development = ...
+
+  # 2. Внутренняя оценка
+  auc_internal = ...
+
+  # 3. Итоговая модель
+  model = ...
+
+  # 4. Внешняя проверка: Лонг-Бич
+  long_beach = hd[hd["clinic"] == "long_beach"]
+  auc_long_beach = ...
+  mean_risk_long_beach = ...
+  prevalence_long_beach = ...
+  sensitivity_long_beach = ...
+  specificity_long_beach = ...
+
+  # 5. Внешняя проверка: швейцарские клиники
+  auc_switzerland = ...
+
+  # 6. Потеря различающей способности
+  auc_drop = ...
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import confusion_matrix, roc_auc_score
+  from sklearn.model_selection import StratifiedKFold, cross_val_score
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  features = numeric + ["cp", "sex", "exang"]
+
+  def make_model():
+      preprocess = ColumnTransformer([
+          ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                            ("scaler", StandardScaler())]), numeric),
+          ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), ["cp"]),
+          ("bin", SimpleImputer(strategy="most_frequent"), ["sex", "exang"]),
+      ])
+      return Pipeline([("prep", preprocess), ("clf", LogisticRegression(max_iter=1000))])
+
+  cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+  development = hd[hd["clinic"].isin(["cleveland", "hungary"])]
+  n_development = len(development)
+
+  auc_internal = cross_val_score(
+      make_model(), development[features], development["target"], cv=cv, scoring="roc_auc"
+  ).mean()
+
+  model = make_model().fit(development[features], development["target"])
+
+  long_beach = hd[hd["clinic"] == "long_beach"]
+  proba_lb = model.predict_proba(long_beach[features])[:, 1]
+  auc_long_beach = roc_auc_score(long_beach["target"], proba_lb)
+  mean_risk_long_beach = proba_lb.mean()
+  prevalence_long_beach = long_beach["target"].mean()
+  tn, fp, fn, tp = confusion_matrix(long_beach["target"], proba_lb >= 0.5).ravel()
+  sensitivity_long_beach = tp / (tp + fn)
+  specificity_long_beach = tn / (tn + fp)
+
+  switzerland = hd[hd["clinic"] == "switzerland"]
+  auc_switzerland = roc_auc_score(switzerland["target"], model.predict_proba(switzerland[features])[:, 1])
+
+  auc_drop = auc_internal - auc_long_beach
+  print(round(auc_internal, 3), round(auc_long_beach, 3), round(auc_switzerland, 3))
+  print(round(mean_risk_long_beach, 3), round(prevalence_long_beach, 3))
+
+checks:
+  - var: n_development
+    type: equal
+    expected: 597
+    label: Число пациентов для разработки
+    hint: Отберите строки условием hd["clinic"].isin(["cleveland", "hungary"]).
+  - var: auc_internal
+    type: approx
+    expected: 0.892
+    tol: 0.006
+    label: Внутренняя оценка AUC
+    hint: Перекрёстную проверку выполняют только на development - с новой моделью make_model(), cv=cv и scoring="roc_auc"; нужно среднее пяти оценок.
+  - var: auc_long_beach
+    type: approx
+    expected: 0.761
+    tol: 0.006
+    label: AUC в клинике Лонг-Бич
+    hint: Модель должна быть обучена на всей таблице development. Вероятности для long_beach[features] сравните с long_beach["target"] функцией roc_auc_score.
+  - var: mean_risk_long_beach
+    type: approx
+    expected: 0.632
+    tol: 0.01
+    label: Средний предсказанный риск, Лонг-Бич
+    hint: Это среднее значение вероятностей класса 1 для пациентов Лонг-Бич.
+  - var: prevalence_long_beach
+    type: approx
+    expected: 0.745
+    tol: 0.001
+    label: Реальная доля больных, Лонг-Бич
+    hint: Среднее значение столбца target для пациентов Лонг-Бич.
+  - var: sensitivity_long_beach
+    type: approx
+    expected: 0.785
+    tol: 0.015
+    label: Чувствительность, Лонг-Бич
+    hint: Постройте матрицу ошибок для ответов proba >= 0.5 и поделите tp на (tp + fn).
+  - var: specificity_long_beach
+    type: approx
+    expected: 0.627
+    tol: 0.03
+    label: Специфичность, Лонг-Бич
+    hint: tn / (tn + fp) по той же матрице ошибок.
+  - var: auc_switzerland
+    type: approx
+    expected: 0.738
+    tol: 0.008
+    label: AUC в швейцарских клиниках
+    hint: То же, что для Лонг-Бич, но для строк с clinic == "switzerland".
+  - var: auc_drop
+    type: approx
+    expected: 0.131
+    tol: 0.01
+    label: Потеря AUC при переносе
+    hint: Вычтите auc_long_beach из auc_internal.

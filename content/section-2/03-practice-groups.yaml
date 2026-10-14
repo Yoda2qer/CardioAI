@@ -1,0 +1,121 @@
+packages: [pandas, scipy]
+datasets: [heart_failure.csv]
+
+statement: |
+  Продолжаем готовить «Таблицу 1» для данных о сердечной недостаточности: теперь нужно выяснить, по каким показателям умершие и выжившие пациенты различаются неслучайно.
+
+  Таблица загружена в `hf`, группы `died` и `alive` уже созданы.
+
+  1. `median_creat_dead` и `median_creat_alive` — медианы креатинина сыворотки у умерших и у выживших.
+  2. `p_age` — p-значение t-критерия Уэлча для возраста (`scipy.stats.ttest_ind` с `equal_var=False`).
+  3. `age_diff_ci` — список из двух чисел: нижняя и верхняя границы 95% доверительного интервала для разности среднего возраста **умершие минус выжившие**.
+  4. `p_creat` — p-значение критерия Манна—Уитни для креатинина.
+  5. `p_hbp` — p-значение критерия хи-квадрат для связи артериальной гипертензии (`high_blood_pressure`) с исходом. Параметры функции оставьте по умолчанию.
+  6. `significant` — список названий тех признаков из списка `features`, которые различаются между группами по критерию Манна—Уитни **с поправкой Бонферрони**: p меньше 0,05, делённого на число признаков в списке.
+
+  ::: note Подсказка по шагу 3
+  Результат `ttest_ind` имеет метод `confidence_interval()`. Он возвращает объект с полями `low` и `high`. Порядок групп в вызове определяет знак разности.
+  :::
+
+starter: |
+  import pandas as pd
+  from scipy import stats
+
+  hf = pd.read_csv("heart_failure.csv")
+  died = hf[hf["DEATH_EVENT"] == 1]
+  alive = hf[hf["DEATH_EVENT"] == 0]
+
+  # 1. Медианы креатинина
+  median_creat_dead = ...
+  median_creat_alive = ...
+
+  # 2. t-критерий Уэлча для возраста
+  p_age = ...
+
+  # 3. 95% ДИ разности среднего возраста (умершие минус выжившие)
+  age_diff_ci = ...
+
+  # 4. Критерий Манна—Уитни для креатинина
+  p_creat = ...
+
+  # 5. Хи-квадрат: гипертензия и исход
+  p_hbp = ...
+
+  # 6. Поправка Бонферрони
+  features = ["age", "ejection_fraction", "serum_creatinine",
+              "serum_sodium", "platelets", "creatinine_phosphokinase"]
+  significant = ...
+
+solution: |
+  import pandas as pd
+  from scipy import stats
+
+  hf = pd.read_csv("heart_failure.csv")
+  died = hf[hf["DEATH_EVENT"] == 1]
+  alive = hf[hf["DEATH_EVENT"] == 0]
+
+  median_creat_dead = died["serum_creatinine"].median()
+  median_creat_alive = alive["serum_creatinine"].median()
+
+  welch = stats.ttest_ind(died["age"], alive["age"], equal_var=False)
+  p_age = welch.pvalue
+
+  ci = welch.confidence_interval(confidence_level=0.95)
+  age_diff_ci = [ci.low, ci.high]
+
+  p_creat = stats.mannwhitneyu(died["serum_creatinine"], alive["serum_creatinine"]).pvalue
+
+  table = pd.crosstab(hf["high_blood_pressure"], hf["DEATH_EVENT"])
+  p_hbp = stats.chi2_contingency(table).pvalue
+
+  features = ["age", "ejection_fraction", "serum_creatinine",
+              "serum_sodium", "platelets", "creatinine_phosphokinase"]
+  threshold = 0.05 / len(features)
+  significant = [
+      name for name in features
+      if stats.mannwhitneyu(died[name], alive[name]).pvalue < threshold
+  ]
+  print(significant)
+
+checks:
+  - var: median_creat_dead
+    type: approx
+    expected: 1.3
+    tol: 0.001
+    label: Медиана креатинина у умерших
+    hint: Возьмите столбец serum_creatinine таблицы died и метод median().
+  - var: median_creat_alive
+    type: approx
+    expected: 1.0
+    tol: 0.001
+    label: Медиана креатинина у выживших
+    hint: То же для таблицы alive.
+  - var: p_age
+    type: range
+    min: 0.0000460
+    max: 0.0000487
+    label: p-значение t-критерия Уэлча для возраста
+    hint: Нужен именно критерий Уэлча — ttest_ind с параметром equal_var=False. Сохраните поле pvalue результата.
+  - var: age_diff_ci
+    type: list_approx
+    expected: [3.41, 9.50]
+    tol: 0.02
+    label: 95% ДИ разности среднего возраста
+    hint: Первой группой в ttest_ind должны идти умершие, второй — выжившие, тест — Уэлча. Соберите список [ci.low, ci.high].
+  - var: p_creat
+    type: range
+    min: 1.50e-10
+    max: 1.66e-10
+    label: p-значение критерия Манна—Уитни для креатинина
+    hint: Используйте stats.mannwhitneyu для столбца serum_creatinine двух групп и возьмите pvalue.
+  - var: p_hbp
+    type: approx
+    expected: 0.2141
+    tol: 0.001
+    label: p-значение хи-квадрат для гипертензии
+    hint: Постройте таблицу pd.crosstab(hf["high_blood_pressure"], hf["DEATH_EVENT"]) и передайте её в stats.chi2_contingency без дополнительных параметров.
+  - var: significant
+    type: set
+    expected: [age, ejection_fraction, serum_creatinine, serum_sodium]
+    label: Признаки, значимые после поправки Бонферрони
+    hint: Порог равен 0.05 / 6. В список должны попасть названия признаков (строки), для которых p критерия Манна—Уитни меньше порога.

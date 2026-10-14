@@ -1,0 +1,28 @@
+{# Навигация по урокам текущего раздела. Ожидает section, progress и current (id урока или "quiz"). #}
+<aside class="lesson-sidebar">
+  <a class="sidebar-back" href="/course">{{ icon("arrow-left", 16) }} Все разделы</a>
+  <p class="sidebar-section">Раздел {{ section.number }}</p>
+  <h2 class="sidebar-title">{{ section.title }}</h2>
+  <ol class="sidebar-list">
+    {% for item in section.lessons %}
+      {% set state = progress.lesson_state[item.id] %}
+      <li class="is-{{ state }} {{ 'is-current' if item.id == current }}">
+        {% if state == "locked" %}<span class="sidebar-link">{% else %}<a class="sidebar-link" href="/lesson/{{ item.id }}" {% if item.id == current %}aria-current="page"{% endif %}>{% endif %}
+          <span class="lesson-status" aria-hidden="true">
+            {% if state == "done" %}{{ icon("check", 14) }}{% elif state == "locked" %}{{ icon("lock", 12) }}{% else %}{{ item.number }}{% endif %}
+          </span>
+          <span>{{ item.title }}</span>
+        {% if state == "locked" %}</span>{% else %}</a>{% endif %}
+      </li>
+    {% endfor %}
+    {% set quiz = progress.quiz[section.id] %}
+    <li class="is-{{ quiz.state }} {{ 'is-current' if current == 'quiz' }}">
+      {% if quiz.state == "locked" %}<span class="sidebar-link">{% else %}<a class="sidebar-link" href="/quiz/{{ section.id }}" {% if current == 'quiz' %}aria-current="page"{% endif %}>{% endif %}
+        <span class="lesson-status" aria-hidden="true">
+          {% if quiz.passed %}{{ icon("check", 14) }}{% elif quiz.state == "locked" %}{{ icon("lock", 12) }}{% else %}{{ icon("quiz", 14) }}{% endif %}
+        </span>
+        <span>Тест по разделу</span>
+      {% if quiz.state == "locked" %}</span>{% else %}</a>{% endif %}
+    </li>
+  </ol>
+</aside>

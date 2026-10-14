@@ -1,0 +1,178 @@
+packages: [pandas, scikit-learn]
+datasets: [heart_disease.csv]
+
+statement: |
+  Сравните три модели диагностики ИБС — логистическую регрессию, случайный лес и градиентный бустинг — так, как это принято делать: перекрёстной проверкой и по одной и той же метрике.
+
+  Данные загружены. Функция `make_preprocess()` возвращает новый конвейер подготовки признаков; у каждой модели он должен быть свой.
+
+  1. Создайте словарь `models` с тремя конвейерами `Pipeline([("prep", make_preprocess()), ("clf", ...)])`:
+     - `"logreg"` — `LogisticRegression(max_iter=1000)`;
+     - `"forest"` — `RandomForestClassifier(n_estimators=200, random_state=42)`;
+     - `"boosting"` — `GradientBoostingClassifier(random_state=42)`.
+  2. Оцените каждую модель функцией `cross_val_score` на всех данных `X`, `y` с `cv=cv` и `scoring="roc_auc"`. Сохраните **средние** значения по пяти частям в `auc_logreg`, `auc_forest`, `auc_boosting`.
+  3. `best_model` — ключ словаря (строка) модели с наибольшим средним AUC.
+  4. `spread_logreg` — стандартное отклонение пяти оценок AUC логистической регрессии (метод `.std()` массива оценок).
+  5. Обучите случайный лес `models["forest"]` на обучающей выборке `X_train`, `y_train` и сохраните долю верных ответов на обучающей и тестовой выборках в `forest_train_acc` и `forest_test_acc`.
+
+  Расчёт занимает до полуминуты: лес из 200 деревьев обучается шесть раз.
+
+  ::: clinic Что обсудить после решения
+  Сравните разницу между лучшей и худшей моделью со значением `spread_logreg`. Достаточно ли этих данных, чтобы уверенно назвать победителя? И какую из моделей вы предпочли бы объяснять коллегам на клинической конференции?
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  categorical = ["cp"]
+  binary = ["sex", "exang"]
+  X, y = hd[numeric + categorical + binary], hd["target"]
+
+  def make_preprocess():
+      return ColumnTransformer([
+          ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                            ("scaler", StandardScaler())]), numeric),
+          ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical),
+          ("bin", SimpleImputer(strategy="most_frequent"), binary),
+      ])
+
+  cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.25, random_state=42, stratify=y
+  )
+
+  # 1. Три модели
+  models = {
+      "logreg": ...,
+      "forest": ...,
+      "boosting": ...,
+  }
+
+  # 2. Перекрёстная проверка
+  auc_logreg = ...
+  auc_forest = ...
+  auc_boosting = ...
+
+  # 3. Лучшая модель
+  best_model = ...
+
+  # 4. Разброс оценок логистической регрессии
+  spread_logreg = ...
+
+  # 5. Случайный лес: обучающая и тестовая выборки
+  forest_train_acc = ...
+  forest_test_acc = ...
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  categorical = ["cp"]
+  binary = ["sex", "exang"]
+  X, y = hd[numeric + categorical + binary], hd["target"]
+
+  def make_preprocess():
+      return ColumnTransformer([
+          ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                            ("scaler", StandardScaler())]), numeric),
+          ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical),
+          ("bin", SimpleImputer(strategy="most_frequent"), binary),
+      ])
+
+  cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.25, random_state=42, stratify=y
+  )
+
+  models = {
+      "logreg": Pipeline([("prep", make_preprocess()), ("clf", LogisticRegression(max_iter=1000))]),
+      "forest": Pipeline([("prep", make_preprocess()),
+                          ("clf", RandomForestClassifier(n_estimators=200, random_state=42))]),
+      "boosting": Pipeline([("prep", make_preprocess()), ("clf", GradientBoostingClassifier(random_state=42))]),
+  }
+
+  scores = {name: cross_val_score(model, X, y, cv=cv, scoring="roc_auc") for name, model in models.items()}
+  auc_logreg = scores["logreg"].mean()
+  auc_forest = scores["forest"].mean()
+  auc_boosting = scores["boosting"].mean()
+
+  best_model = max(scores, key=lambda name: scores[name].mean())
+  spread_logreg = scores["logreg"].std()
+
+  forest = models["forest"].fit(X_train, y_train)
+  forest_train_acc = forest.score(X_train, y_train)
+  forest_test_acc = forest.score(X_test, y_test)
+
+  for name, values in scores.items():
+      print(f"{name:9} {values.mean():.3f} ± {values.std():.3f}")
+  print(best_model, forest_train_acc, forest_test_acc)
+
+checks:
+  - var: auc_logreg
+    type: approx
+    expected: 0.8786
+    tol: 0.005
+    label: AUC логистической регрессии
+    hint: Нужно среднее пяти оценок — cross_val_score(models["logreg"], X, y, cv=cv, scoring="roc_auc").mean(). Проверьте, что LogisticRegression создана с max_iter=1000.
+  - var: auc_forest
+    type: approx
+    expected: 0.8627
+    tol: 0.01
+    label: AUC случайного леса
+    hint: Проверьте параметры леса (n_estimators=200, random_state=42) и то, что оценка идёт на всех данных X, y с cv=cv.
+  - var: auc_boosting
+    type: approx
+    expected: 0.8672
+    tol: 0.01
+    label: AUC градиентного бустинга
+    hint: Используйте GradientBoostingClassifier(random_state=42) без других параметров.
+  - var: best_model
+    type: equal
+    expected: logreg
+    label: Лучшая модель
+    hint: В best_model должен быть ключ словаря — одна из строк "logreg", "forest", "boosting" — с наибольшим средним AUC.
+  - var: spread_logreg
+    type: approx
+    expected: 0.0173
+    tol: 0.003
+    label: Разброс оценок логистической регрессии
+    hint: Стандартное отклонение считается по тем же пяти оценкам, что и среднее — методом .std().
+  - var: forest_train_acc
+    type: range
+    min: 0.995
+    max: 1.0
+    label: Случайный лес на обучающей выборке
+    hint: Обучите models["forest"] на X_train, y_train и вызовите score для обучающей выборки.
+  - var: forest_test_acc
+    type: approx
+    expected: 0.822
+    tol: 0.02
+    label: Случайный лес на тестовой выборке
+    hint: После обучения на X_train вызовите score(X_test, y_test).

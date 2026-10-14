@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+instance
+**/__pycache__
+.pytest_cache
+app/static/vendor/pyodide
+docs/_build
+tests
+data
+scripts

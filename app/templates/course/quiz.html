@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Тест: {{ section.title }}{% endblock %}
+{% block content %}
+<div class="container lesson-layout">
+  {% set current = "quiz" %}
+  {% include "course/_sidebar.html" %}
+  <div class="lesson-main">
+    <header class="lesson-header">
+      <p class="eyebrow">Раздел {{ section.number }} · Тест</p>
+      <h1>{{ section.title }}</h1>
+      <p class="lesson-tags">
+        <span class="tag">{{ icon("quiz", 14) }} {{ plural(questions | length, "вопрос", "вопроса", "вопросов") }}</span>
+        <span class="tag">Проходной балл {{ settings.quiz_pass_percent }}%</span>
+        <span class="tag tag-practice">Осталось попыток: {{ status.attempts_left }}</span>
+      </p>
+    </header>
+
+    <div class="alert alert-info">
+      Отправить ответы можно один раз за попытку. В вопросах с пометкой «несколько ответов» нужно отметить все верные варианты.
+      {% if status.attempts_left == 1 %}Это последняя попытка в серии: после неудачи тест закроется на {{ plural(settings.quiz_cooldown_hours, "час", "часа", "часов") }}.{% endif %}
+    </div>
+
+    <form method="post" action="/quiz/{{ section.id }}" id="quiz-form" class="quiz-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% for question, options in questions %}
+        <fieldset class="question" data-question>
+          <legend>
+            <span class="question-number">{{ loop.index }}</span>
+            <span class="question-text">{{ question.text_html | safe }}</span>
+          </legend>
+          {% if question.multiple %}<p class="question-note">Несколько ответов</p>{% endif %}
+          <div class="options">
+            {% for index, option_html in options %}
+              <label class="option">
+                <input type="{{ 'checkbox' if question.multiple else 'radio' }}" name="q-{{ question.id }}" value="{{ index }}">
+                <span>{{ option_html | safe }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+      {% endfor %}
+      <div class="quiz-submit">
+        <span class="muted" id="quiz-counter" aria-live="polite"></span>
+        <button class="btn btn-primary btn-lg" type="submit">Завершить тест</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ static_url('js/quiz.js') }}"></script>
+{% endblock %}

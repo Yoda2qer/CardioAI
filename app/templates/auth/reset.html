@@ -1,0 +1,24 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Новый пароль{% endblock %}
+{% block card %}
+<h1>Новый пароль</h1>
+{% if not valid %}
+  <div class="alert alert-danger" role="alert">Ссылка недействительна или устарела. Запросите сброс пароля ещё раз.</div>
+  <a class="btn btn-secondary btn-block" href="/forgot">Запросить новую ссылку</a>
+{% else %}
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field">
+      <span>Новый пароль</span>
+      <input type="password" name="password" autocomplete="new-password" minlength="8" required autofocus>
+      <small class="field-hint">Не короче 8 символов, буквы вместе с цифрами или знаками.</small>
+    </label>
+    <label class="field">
+      <span>Пароль ещё раз</span>
+      <input type="password" name="password2" autocomplete="new-password" required>
+    </label>
+    <button class="btn btn-primary btn-block" type="submit">Сохранить пароль</button>
+  </form>
+{% endif %}
+{% endblock %}

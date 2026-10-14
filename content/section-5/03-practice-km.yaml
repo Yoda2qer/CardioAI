@@ -1,0 +1,146 @@
+packages: [pandas, statsmodels, matplotlib]
+datasets: [heart_failure.csv]
+
+statement: |
+  Сравните выживаемость пациентов с сердечной недостаточностью при сниженной и относительно сохранной фракции выброса — так, как это делают в клинических статьях.
+
+  Таблица загружена, функция `survival_at(km, day)` из урока уже определена.
+
+  1. Разделите пациентов на две группы: `low_ef` — фракция выброса **не выше 30%**, `other_ef` — остальные. Запишите размеры групп в `n_low_ef` и `n_other_ef`, а число смертей в группе со сниженной фракцией — в `events_low_ef`.
+  2. Постройте кривые Каплана—Мейера для обеих групп (`SurvfuncRight`). Сохраните:
+     - `surv100_low` и `surv100_other` — выживаемость к 100-му дню;
+     - `surv250_low` и `surv250_other` — к 250-му дню.
+  3. `median_low` — медиана выживаемости в группе со сниженной фракцией выброса (метод `quantile(0.5)`).
+  4. `logrank_p` — p-значение лог-рангового теста (`survdiff`) для сравнения групп.
+  5. Нарисуйте обе кривые на одном графике с подписями осей и легендой. График не проверяется, но без него вывод не сделать.
+
+  ::: clinic Вопрос для размышления
+  Через 250 дней в живых остаётся меньше четверти пациентов со сниженной фракцией выброса. Какие вмешательства могли бы изменить эту кривую — и почему оценить их эффект по таким наблюдательным данным нельзя?
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+  from statsmodels.duration.survfunc import SurvfuncRight, survdiff
+
+  hf = pd.read_csv("heart_failure.csv")
+
+  def survival_at(km, day):
+      steps = km.surv_times <= day
+      return km.surv_prob[steps][-1] if steps.any() else 1.0
+
+  # 1. Группы
+  low_ef = ...
+  other_ef = ...
+  n_low_ef = ...
+  n_other_ef = ...
+  events_low_ef = ...
+
+  # 2. Кривые Каплана—Мейера и выживаемость к 100 и 250 дню
+  km_low = ...
+  km_other = ...
+  surv100_low = ...
+  surv100_other = ...
+  surv250_low = ...
+  surv250_other = ...
+
+  # 3. Медиана выживаемости при сниженной фракции выброса
+  median_low = ...
+
+  # 4. Лог-ранговый тест
+  logrank_p = ...
+
+  # 5. График
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+  from statsmodels.duration.survfunc import SurvfuncRight, survdiff
+
+  hf = pd.read_csv("heart_failure.csv")
+
+  def survival_at(km, day):
+      steps = km.surv_times <= day
+      return km.surv_prob[steps][-1] if steps.any() else 1.0
+
+  is_low = hf["ejection_fraction"] <= 30
+  low_ef = hf[is_low]
+  other_ef = hf[~is_low]
+  n_low_ef = len(low_ef)
+  n_other_ef = len(other_ef)
+  events_low_ef = low_ef["DEATH_EVENT"].sum()
+
+  km_low = SurvfuncRight(low_ef["time"], low_ef["DEATH_EVENT"])
+  km_other = SurvfuncRight(other_ef["time"], other_ef["DEATH_EVENT"])
+  surv100_low = survival_at(km_low, 100)
+  surv100_other = survival_at(km_other, 100)
+  surv250_low = survival_at(km_low, 250)
+  surv250_other = survival_at(km_other, 250)
+
+  median_low = km_low.quantile(0.5)
+
+  chi2, logrank_p = survdiff(hf["time"], hf["DEATH_EVENT"], is_low.astype(int))
+
+  fig, ax = plt.subplots()
+  for label, km in [("ФВ ≤ 30%", km_low), ("ФВ > 30%", km_other)]:
+      ax.step(np.r_[0, km.surv_times], np.r_[1, km.surv_prob], where="post", label=label)
+  ax.set_ylim(0, 1.02)
+  ax.set_xlabel("Дни наблюдения")
+  ax.set_ylabel("Доля живых")
+  ax.legend()
+  plt.show()
+
+checks:
+  - var: n_low_ef
+    type: equal
+    expected: 93
+    label: Пациентов с ФВ не выше 30%
+    hint: Условие «не выше 30» — ejection_fraction <= 30.
+  - var: n_other_ef
+    type: equal
+    expected: 206
+    label: Остальных пациентов
+    hint: Во вторую группу входят все, кто не попал в первую.
+  - var: events_low_ef
+    type: equal
+    expected: 51
+    label: Смертей при ФВ не выше 30%
+    hint: Сумма столбца DEATH_EVENT в группе со сниженной фракцией выброса.
+  - var: surv100_low
+    type: approx
+    expected: 0.607
+    tol: 0.005
+    label: Выживаемость к 100 дню, ФВ ≤ 30%
+    hint: Постройте SurvfuncRight(low_ef["time"], low_ef["DEATH_EVENT"]) и вызовите survival_at(km_low, 100).
+  - var: surv100_other
+    type: approx
+    expected: 0.814
+    tol: 0.005
+    label: Выживаемость к 100 дню, ФВ > 30%
+    hint: То же для второй группы.
+  - var: surv250_low
+    type: approx
+    expected: 0.228
+    tol: 0.005
+    label: Выживаемость к 250 дню, ФВ ≤ 30%
+    hint: survival_at(km_low, 250).
+  - var: surv250_other
+    type: approx
+    expected: 0.744
+    tol: 0.005
+    label: Выживаемость к 250 дню, ФВ > 30%
+    hint: survival_at(km_other, 250).
+  - var: median_low
+    type: approx
+    expected: 170
+    tol: 0.5
+    label: Медиана выживаемости при ФВ ≤ 30%
+    hint: Медиана — km_low.quantile(0.5), время в днях, когда кривая опускается до 0,5.
+  - var: logrank_p
+    type: range
+    min: 0.0000000250
+    max: 0.0000000380
+    label: p-значение лог-рангового теста
+    hint: survdiff(время, событие, группа) возвращает пару (статистика, p). Время и событие берутся по всей таблице, группа — признак принадлежности к low_ef в виде 0 и 1.

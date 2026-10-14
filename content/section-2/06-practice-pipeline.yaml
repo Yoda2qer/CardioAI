@@ -1,0 +1,145 @@
+packages: [pandas, scikit-learn]
+datasets: [heart_disease.csv]
+
+statement: |
+  Соберите конвейер подготовки признаков для данных об ишемической болезни сердца — такой же по устройству, как в уроке, но с другим набором признаков и другим разбиением.
+
+  Данные загружены и очищены, списки признаков `numeric`, `categorical` и `binary` заданы.
+
+  1. Разделите `X` и `y` на обучающую и тестовую части функцией `train_test_split`: `test_size=0.2`, `random_state=7`, `stratify=y`. Результат сохраните в `X_train`, `X_test`, `y_train`, `y_test`. Запишите размеры выборок в `n_train` и `n_test`.
+  2. `chol_median_train` — медиана холестерина **в обучающей выборке**. Именно этим числом конвейер будет заполнять пропуски.
+  3. Создайте `preprocess` — объект `ColumnTransformer` из трёх частей **в таком порядке**:
+     - количественные признаки (`numeric`): заполнение медианой, затем `StandardScaler`;
+     - категориальные (`categorical`): заполнение самым частым значением, затем `OneHotEncoder(handle_unknown="ignore", sparse_output=False)`;
+     - бинарные (`binary`): заполнение самым частым значением.
+  4. Обучите конвейер на обучающей выборке и преобразуйте обе: `X_train_prepared` и `X_test_prepared`.
+  5. Сохраните:
+     - `n_features_out` — число столбцов в `X_train_prepared`;
+     - `n_missing_after` — общее число пропусков в двух подготовленных матрицах;
+     - `test_age_mean` — среднее значение первого столбца (это возраст) в `X_test_prepared`.
+
+  ::: warning Где чаще всего ошибаются
+  К тестовой выборке применяют только `transform`. Если вызвать для неё `fit_transform`, параметры пересчитаются по тестовым пациентам — проверка `test_age_mean` это обнаружит.
+  :::
+
+starter: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  categorical = ["cp", "restecg"]
+  binary = ["sex", "fbs", "exang"]
+
+  X = hd[numeric + categorical + binary]
+  y = hd["target"]
+
+  # 1. Разбиение
+  X_train, X_test, y_train, y_test = ...
+  n_train = ...
+  n_test = ...
+
+  # 2. Медиана холестерина в обучающей выборке
+  chol_median_train = ...
+
+  # 3. Конвейер подготовки
+  preprocess = ...
+
+  # 4. Обучение на train, преобразование train и test
+  X_train_prepared = ...
+  X_test_prepared = ...
+
+  # 5. Проверки
+  n_features_out = ...
+  n_missing_after = ...
+  test_age_mean = ...
+
+solution: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  hd = pd.read_csv("heart_disease.csv")
+  hd[["chol", "trestbps"]] = hd[["chol", "trestbps"]].replace(0, np.nan)
+  hd["target"] = (hd["num"] > 0).astype(int)
+
+  numeric = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+  categorical = ["cp", "restecg"]
+  binary = ["sex", "fbs", "exang"]
+
+  X = hd[numeric + categorical + binary]
+  y = hd["target"]
+
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.2, random_state=7, stratify=y
+  )
+  n_train = len(X_train)
+  n_test = len(X_test)
+
+  chol_median_train = X_train["chol"].median()
+
+  preprocess = ColumnTransformer([
+      ("num", Pipeline([
+          ("imputer", SimpleImputer(strategy="median")),
+          ("scaler", StandardScaler()),
+      ]), numeric),
+      ("cat", Pipeline([
+          ("imputer", SimpleImputer(strategy="most_frequent")),
+          ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+      ]), categorical),
+      ("bin", SimpleImputer(strategy="most_frequent"), binary),
+  ])
+
+  X_train_prepared = preprocess.fit_transform(X_train)
+  X_test_prepared = preprocess.transform(X_test)
+
+  n_features_out = X_train_prepared.shape[1]
+  n_missing_after = int(np.isnan(X_train_prepared).sum() + np.isnan(X_test_prepared).sum())
+  test_age_mean = X_test_prepared[:, 0].mean()
+  print(preprocess.get_feature_names_out())
+
+checks:
+  - var: n_train
+    type: equal
+    expected: 736
+    label: Размер обучающей выборки
+    hint: При test_size=0.2 в обучающую часть попадает 80% из 920 пациентов.
+  - var: n_test
+    type: equal
+    expected: 184
+    label: Размер тестовой выборки
+    hint: Проверьте параметр test_size=0.2.
+  - var: chol_median_train
+    type: approx
+    expected: 240.0
+    tol: 0.01
+    label: Медиана холестерина в обучающей выборке
+    hint: Медиану нужно считать по X_train, а не по всей таблице, и при разбиении с random_state=7 и stratify=y.
+  - var: n_features_out
+    type: equal
+    expected: 15
+    label: Число признаков после подготовки
+    hint: Пять количественных, четыре столбца для cp, три для restecg и три бинарных. Если получилось иначе, проверьте списки столбцов в ColumnTransformer.
+  - var: n_missing_after
+    type: equal
+    expected: 0
+    label: Пропуски после подготовки
+    hint: В каждой из трёх частей конвейера должен быть SimpleImputer.
+  - var: test_age_mean
+    type: approx
+    expected: 0.0216
+    tol: 0.002
+    label: Средний возраст в тестовой выборке после масштабирования
+    hint: Количественные признаки должны идти в ColumnTransformer первыми, возраст — первым среди них. К тестовой выборке применяется transform, а не fit_transform.

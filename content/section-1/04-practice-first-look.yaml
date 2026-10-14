@@ -1,0 +1,95 @@
+packages: [pandas]
+datasets: [heart_failure.csv]
+
+statement: |
+  Вы получили таблицу пациентов с сердечной недостаточностью и должны составить о ней первое впечатление — так начинается любой анализ. Используйте приёмы из урока о pandas.
+
+  Таблица уже загружена в переменную `hf`. Сохраните ответы в переменные с указанными именами.
+
+  1. `n_patients` и `n_features` — число строк и число столбцов таблицы.
+  2. `death_rate` — доля пациентов, умерших за время наблюдения (число от 0 до 1).
+  3. `n_women` — число женщин. Пол закодирован в столбце `sex`: 0 — женщина, 1 — мужчина.
+  4. `mean_age_dead` — средний возраст умерших пациентов.
+  5. `low_ef_death_rate` — доля умерших среди пациентов с фракцией выброса **не выше 30%**.
+  6. `top3_cpk` — список из трёх самых высоких значений креатинфосфокиназы, от большего к меньшему.
+
+  ::: note Как пользоваться редактором
+  «Запустить» выполняет код и показывает всё, что напечатано через `print`. «Проверить» запускает код и отправляет значения переменных на проверку. Округлять ответы не нужно.
+  :::
+
+starter: |
+  import pandas as pd
+
+  hf = pd.read_csv("heart_failure.csv")
+  print(hf.head())
+
+  # 1. Размер таблицы
+  n_patients = ...
+  n_features = ...
+
+  # 2. Доля умерших (столбец DEATH_EVENT)
+  death_rate = ...
+
+  # 3. Число женщин
+  n_women = ...
+
+  # 4. Средний возраст умерших
+  mean_age_dead = ...
+
+  # 5. Доля умерших при фракции выброса не выше 30%
+  low_ef_death_rate = ...
+
+  # 6. Три самых высоких значения КФК, список
+  top3_cpk = ...
+
+solution: |
+  import pandas as pd
+
+  hf = pd.read_csv("heart_failure.csv")
+
+  n_patients, n_features = hf.shape
+  death_rate = hf["DEATH_EVENT"].mean()
+  n_women = (hf["sex"] == 0).sum()
+  mean_age_dead = hf.loc[hf["DEATH_EVENT"] == 1, "age"].mean()
+  low_ef_death_rate = hf.loc[hf["ejection_fraction"] <= 30, "DEATH_EVENT"].mean()
+  top3_cpk = hf["creatinine_phosphokinase"].sort_values(ascending=False).head(3).tolist()
+
+checks:
+  - var: n_patients
+    type: equal
+    expected: 299
+    label: Число пациентов
+    hint: Число строк — первый элемент hf.shape или len(hf).
+  - var: n_features
+    type: equal
+    expected: 13
+    label: Число столбцов
+    hint: Число столбцов — второй элемент hf.shape.
+  - var: death_rate
+    type: approx
+    expected: 0.3211
+    tol: 0.0005
+    label: Доля умерших
+    hint: Доля единиц в бинарном столбце равна его среднему значению. Ответ должен быть долей (около 0.3), а не процентом.
+  - var: n_women
+    type: equal
+    expected: 105
+    label: Число женщин
+    hint: Отберите строки, где sex равен 0, и посчитайте их.
+  - var: mean_age_dead
+    type: approx
+    expected: 65.215
+    tol: 0.01
+    label: Средний возраст умерших
+    hint: Сначала отберите строки с DEATH_EVENT == 1, затем возьмите среднее столбца age.
+  - var: low_ef_death_rate
+    type: approx
+    expected: 0.5484
+    tol: 0.0005
+    label: Летальность при ФВ не выше 30%
+    hint: Условие «не выше 30» — это ejection_fraction <= 30, включая само значение 30.
+  - var: top3_cpk
+    type: equal
+    expected: [7861, 7702, 5882]
+    label: Три максимальных значения КФК
+    hint: Отсортируйте столбец по убыванию, возьмите первые три значения и превратите их в список методом tolist().

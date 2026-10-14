@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Проверка сертификата{% endblock %}
+{% block content %}
+<div class="container narrow">
+  <section class="state-card">
+    {% if certificate %}
+      <div class="state-icon state-icon-success">{{ icon("check", 28) }}</div>
+      <h1>Сертификат действителен</h1>
+      <dl class="profile-meta">
+        <div><dt>Номер</dt><dd>{{ certificate.number }}</dd></div>
+        <div><dt>Выдан</dt><dd>{{ certificate.user.full_name }}</dd></div>
+        <div><dt>Курс</dt><dd>{{ course.title }}</dd></div>
+        <div><dt>Дата выдачи</dt><dd>{{ certificate.issued_at | local_time("%d.%m.%Y") }}</dd></div>
+      </dl>
+    {% else %}
+      <div class="state-icon state-icon-warn">{{ icon("x", 28) }}</div>
+      <h1>Сертификат не найден</h1>
+      <p>Сертификата с номером <strong>{{ number }}</strong> нет в базе. Проверьте номер: в нём учитываются все символы.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
