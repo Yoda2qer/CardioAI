@@ -2,7 +2,7 @@ import json
 import random
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,16 +11,25 @@ from ..config import get_settings
 from ..content import Section, get_course
 from ..db import get_db
 from ..grading import grade_quiz
-from ..models import Certificate, QuizAttempt, User, utcnow
+from ..models import Certificate, QuizAttempt, Reflection, User, utcnow
 from ..progress import build_progress
 from ..security import require_user, verify_csrf
-from ..web import render
+from ..web import flash, render
 
 router = APIRouter()
 
+# Вопросы рефлексии после каждого блока курса (раздела и итогового теста).
+REFLECTION_QUESTIONS = [
+    ("useful", "Что в этом блоке оказалось самым полезным для вашей учёбы или работы?"),
+    ("difficult", "Что осталось непонятным или вызвало затруднения?"),
+    ("apply", "Где и как вы сможете применить полученные знания?"),
+]
+REFLECTION_MAX_LENGTH = 2000
+
 
 def _get_section(section_id: str) -> Section:
-    section = get_course().section(section_id)
+    """Раздел курса или итоговый тест."""
+    section = get_course().quiz_unit(section_id)
     if section is None:
         raise HTTPException(404, "Раздел не найден")
     return section
@@ -104,8 +113,6 @@ async def submit_quiz(
         )
     )
     db.commit()
-    if passed and build_progress(db, user, get_course()).completed:
-        ensure_certificate(db, user)
     return RedirectResponse(f"/quiz/{section.id}/result", status_code=303)
 
 
@@ -135,7 +142,6 @@ def quiz_result(
         }
         for question, ok in zip(section.quiz, marks)
     ]
-    next_section = next((s for s in course.sections if s.number == section.number + 1), None)
     return render(
         request,
         "course/quiz_result.html",
@@ -144,7 +150,6 @@ def quiz_result(
         status=status,
         review=review,
         progress=progress,
-        next_section=next_section,
         percent=round(100 * attempt.score / attempt.total),
     )
 
@@ -175,3 +180,65 @@ def verify_certificate(request: Request, number: str, db: Session = Depends(get_
         request, "course/verify.html", status_code=200 if certificate else 404,
         certificate=certificate, number=number,
     )
+
+
+@router.get("/reflection/{section_id}")
+def reflection_form(
+    request: Request,
+    section_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    section = _get_section(section_id)
+    progress = build_progress(db, user, get_course())
+    if not progress.quiz[section.id].passed:
+        return render(
+            request, "course/locked.html", status_code=403, progress=progress,
+            title="Рефлексия", reason="Рефлексия по блоку открывается после сдачи его теста.",
+        )
+    existing = db.scalar(
+        select(Reflection).where(Reflection.user_id == user.id, Reflection.section_id == section.id)
+    )
+    return render(
+        request, "course/reflection.html", section=section, progress=progress,
+        questions=REFLECTION_QUESTIONS, existing=existing,
+        answers=json.loads(existing.answers_json) if existing else {}, error=None,
+    )
+
+
+@router.post("/reflection/{section_id}", dependencies=[Depends(verify_csrf)])
+async def submit_reflection(
+    request: Request,
+    section_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    section = _get_section(section_id)
+    course = get_course()
+    progress = build_progress(db, user, course)
+    if not progress.quiz[section.id].passed:
+        raise HTTPException(403, "Рефлексия по блоку открывается после сдачи его теста")
+    form = await request.form()
+    rating = str(form.get("rating", ""))
+    answers = {key: str(form.get(key, "")).strip()[:REFLECTION_MAX_LENGTH] for key, _ in REFLECTION_QUESTIONS}
+    if rating not in {"1", "2", "3", "4", "5"} or not any(answers.values()):
+        return render(
+            request, "course/reflection.html", status_code=400, section=section, progress=progress,
+            questions=REFLECTION_QUESTIONS, existing=None, answers=answers,
+            error="Оцените блок и ответьте хотя бы на один вопрос.",
+        )
+    reflection = db.scalar(
+        select(Reflection).where(Reflection.user_id == user.id, Reflection.section_id == section.id)
+    )
+    if reflection is None:
+        reflection = Reflection(user_id=user.id, section_id=section.id, rating=0, answers_json="{}")
+        db.add(reflection)
+    reflection.rating = int(rating)
+    reflection.answers_json = json.dumps(answers, ensure_ascii=False)
+    db.commit()
+
+    progress = build_progress(db, user, course)
+    if progress.completed:
+        ensure_certificate(db, user)
+    flash(request, "Спасибо за отзыв! Он поможет сделать курс лучше.", "success")
+    return RedirectResponse(progress.next_url, status_code=303)

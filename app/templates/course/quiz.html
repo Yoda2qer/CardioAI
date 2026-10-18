@@ -6,7 +6,7 @@
   {% include "course/_sidebar.html" %}
   <div class="lesson-main">
     <header class="lesson-header">
-      <p class="eyebrow">Раздел {{ section.number }} · Тест</p>
+      <p class="eyebrow">{{ "Итоговое тестирование" if section.id == progress.final_id else "Раздел " ~ section.number }} · Тест</p>
       <h1>{{ section.title }}</h1>
       <p class="lesson-tags">
         <span class="tag">{{ icon("quiz", 14) }} {{ plural(questions | length, "вопрос", "вопроса", "вопросов") }}</span>

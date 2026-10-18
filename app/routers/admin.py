@@ -1,15 +1,17 @@
-import secrets
+import json
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..content import get_course
 from ..db import get_db
-from ..models import InviteCode, LessonProgress, PracticeSubmission, QuizAttempt, User
+from ..models import HomeworkSubmission, LessonProgress, PracticeSubmission, QuizAttempt, Reflection, User
+from ..models import utcnow
 from ..progress import build_progress
 from ..security import generate_temp_password, hash_password, require_admin, verify_csrf
+from .quiz import REFLECTION_QUESTIONS
 from ..web import flash, render
 
 router = APIRouter(prefix="/admin")
@@ -60,6 +62,14 @@ def _user_detail(request: Request, db: Session, target: User, temp_password: str
         row.lesson_id: row
         for row in db.scalars(select(PracticeSubmission).where(PracticeSubmission.user_id == target.id))
     }
+    homework = {
+        row.lesson_id: row
+        for row in db.scalars(select(HomeworkSubmission).where(HomeworkSubmission.user_id == target.id))
+    }
+    reflections = {
+        row.section_id: (row, json.loads(row.answers_json))
+        for row in db.scalars(select(Reflection).where(Reflection.user_id == target.id))
+    }
     attempts: dict[str, list[QuizAttempt]] = {}
     for attempt in db.scalars(
         select(QuizAttempt).where(QuizAttempt.user_id == target.id).order_by(QuizAttempt.created_at)
@@ -72,6 +82,9 @@ def _user_detail(request: Request, db: Session, target: User, temp_password: str
         progress=build_progress(db, target, course),
         done_at=done_at,
         submissions=submissions,
+        homework=homework,
+        reflections=reflections,
+        reflection_questions=REFLECTION_QUESTIONS,
         attempts=attempts,
         temp_password=temp_password,
     )
@@ -152,57 +165,60 @@ def reset_quiz(
     return _back(target.id)
 
 
-# --- Коды приглашения -------------------------------------------------------
+# --- Домашние задания -------------------------------------------------------
+
+HOMEWORK_STATUSES = {"submitted": "Ждут проверки", "returned": "На доработке", "accepted": "Приняты"}
 
 
-def generate_invite_code() -> str:
-    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    return "CARDIO-" + "".join(secrets.choice(alphabet) for _ in range(8))
+def pending_homework(db: Session) -> int:
+    return db.scalar(select(func.count()).where(HomeworkSubmission.status == "submitted")) or 0
 
 
-@router.get("/invites")
-def invites(request: Request, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
-    codes = list(db.scalars(select(InviteCode).order_by(InviteCode.created_at.desc())))
-    return render(request, "admin/invites.html", codes=codes, error=None)
-
-
-@router.post("/invites", dependencies=[Depends(verify_csrf)])
-def create_invite(
+@router.get("/homework")
+def homework_queue(
     request: Request,
-    code: str = Form(""),
-    note: str = Form(""),
-    max_uses: str = Form(""),
+    status: str = "submitted",
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    code = code.strip() or generate_invite_code()
-    error = None
-    limit = None
-    if not 4 <= len(code) <= 64 or any(ch.isspace() for ch in code):
-        error = "Код должен быть длиной от 4 до 64 символов и без пробелов."
-    elif db.scalar(select(InviteCode.id).where(InviteCode.code == code)):
-        error = "Такой код уже существует."
-    elif max_uses.strip():
-        if max_uses.strip().isdigit() and int(max_uses) > 0:
-            limit = int(max_uses)
-        else:
-            error = "Лимит регистраций должен быть положительным числом."
-    if error:
-        codes = list(db.scalars(select(InviteCode).order_by(InviteCode.created_at.desc())))
-        return render(request, "admin/invites.html", status_code=400, codes=codes, error=error)
-    db.add(InviteCode(code=code, note=note.strip()[:200], max_uses=limit))
-    db.commit()
-    flash(request, f"Код {code} создан.", "success")
-    return RedirectResponse("/admin/invites", status_code=303)
+    if status not in HOMEWORK_STATUSES:
+        status = "submitted"
+    items = list(
+        db.scalars(
+            select(HomeworkSubmission)
+            .where(HomeworkSubmission.status == status)
+            .order_by(HomeworkSubmission.submitted_at)
+        )
+    )
+    counts = dict(
+        db.execute(select(HomeworkSubmission.status, func.count()).group_by(HomeworkSubmission.status)).all()
+    )
+    return render(
+        request, "admin/homework.html", items=items, status=status,
+        statuses=HOMEWORK_STATUSES, counts=counts,
+    )
 
 
-@router.post("/invites/{invite_id}/toggle", dependencies=[Depends(verify_csrf)])
-def toggle_invite(
-    request: Request, invite_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)
+@router.post("/homework/{submission_id}/review", dependencies=[Depends(verify_csrf)])
+def review_homework(
+    request: Request,
+    submission_id: int,
+    decision: str = Form(""),
+    comment: str = Form(""),
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
 ):
-    invite = db.get(InviteCode, invite_id)
-    if invite is None:
-        raise HTTPException(404, "Код не найден")
-    invite.is_active = not invite.is_active
+    submission = db.get(HomeworkSubmission, submission_id)
+    if submission is None:
+        raise HTTPException(404, "Ответ не найден")
+    if decision not in ("accepted", "returned"):
+        raise HTTPException(400, "Неизвестное решение")
+    if decision == "returned" and not comment.strip():
+        flash(request, "Возвращая работу, напишите комментарий: что нужно исправить.", "danger")
+        return RedirectResponse("/admin/homework", status_code=303)
+    submission.status = decision
+    submission.teacher_comment = comment.strip()[:5000]
+    submission.reviewed_at = utcnow()
     db.commit()
-    return RedirectResponse("/admin/invites", status_code=303)
+    flash(request, "Работа принята." if decision == "accepted" else "Работа возвращена с комментарием.", "success")
+    return RedirectResponse("/admin/homework", status_code=303)

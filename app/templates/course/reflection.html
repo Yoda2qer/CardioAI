@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Рефлексия: {{ section.title }}{% endblock %}
+{% block content %}
+<div class="container lesson-layout">
+  {% set current = "reflection" %}
+  {% include "course/_sidebar.html" %}
+  <div class="lesson-main">
+    <header class="lesson-header">
+      <p class="eyebrow">{{ "Итоговый блок" if section.id == progress.final_id else "Раздел " ~ section.number }} · Рефлексия</p>
+      <h1>{{ section.title }}</h1>
+      <p class="muted">Несколько минут, чтобы оглянуться на пройденный блок. Ответы видит только преподаватель курса — они помогают ему улучшать материалы и вовремя помочь, если что-то осталось непонятным.</p>
+    </header>
+
+    {% if existing %}
+      <div class="alert alert-success">Рефлексия по этому блоку уже заполнена {{ existing.created_at | local_time("%d.%m.%Y") }}. Ответы можно уточнить и отправить заново.</div>
+    {% endif %}
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+
+    <form method="post" action="/reflection/{{ section.id }}" class="form card">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <fieldset class="field">
+        <legend><strong>Насколько понятным и полезным был блок?</strong> 1 — совсем нет, 5 — очень</legend>
+        <div class="rating">
+          {% for value in range(1, 6) %}
+            <label><input type="radio" name="rating" value="{{ value }}" {{ 'checked' if existing and existing.rating == value }} required>{{ value }}</label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% for key, question in questions %}
+        <label class="field">
+          <span>{{ question }}</span>
+          <textarea name="{{ key }}" maxlength="2000">{{ answers.get(key, "") }}</textarea>
+        </label>
+      {% endfor %}
+      <button class="btn btn-primary" type="submit">{{ icon("check") }} Отправить и продолжить</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

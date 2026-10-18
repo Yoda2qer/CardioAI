@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import get_db
 from ..mailer import mail_enabled, send_mail
-from ..models import InviteCode, User, utcnow
+from ..models import User, utcnow
 from ..security import (
     RESET_TOKEN_MAX_AGE,
     get_optional_user,
@@ -117,14 +117,12 @@ def register(
     email: str = Form(""),
     password: str = Form(""),
     password2: str = Form(""),
-    invite_code: str = Form(""),
+    consent: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    settings = get_settings()
     full_name = " ".join(full_name.split())
     email = normalize_email(email)
-    invite_code = invite_code.strip()
-    form = {"full_name": full_name, "email": email, "invite_code": invite_code}
+    form = {"full_name": full_name, "email": email, "consent": bool(consent)}
     errors: dict[str, str] = {}
 
     if not 2 <= len(full_name) <= 150:
@@ -139,19 +137,13 @@ def register(
     elif password != password2:
         errors["password2"] = "Пароли не совпадают."
 
-    invite = None
-    if settings.invite_required:
-        invite = db.scalar(select(InviteCode).where(InviteCode.code == invite_code))
-        if invite is None or not invite.is_usable:
-            errors["invite_code"] = "Код приглашения не найден или больше не действует."
+    if not consent:
+        errors["consent"] = "Без согласия на обработку персональных данных регистрация невозможна."
 
     if errors:
         return render(request, "auth/register.html", status_code=400, form=form, errors=errors)
 
     user = User(email=email, full_name=full_name, password_hash=hash_password(password))
-    if invite:
-        invite.uses += 1
-        user.invite_code = invite
     user.last_login_at = utcnow()
     db.add(user)
     db.commit()

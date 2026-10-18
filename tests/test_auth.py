@@ -1,6 +1,6 @@
-from conftest import INVITE, PASSWORD, create_user, csrf, login, post, register
+from conftest import PASSWORD, create_user, csrf, login, post, register
 
-from app.models import InviteCode, User
+from app.models import User
 from app.security import make_reset_token
 from sqlalchemy import select
 
@@ -11,29 +11,20 @@ def test_anonymous_is_redirected_to_login(client):
     assert response.headers["location"] == "/login"
 
 
-def test_register_with_invite_logs_in(client, db):
+def test_register_logs_in(client, db):
     response = register(client)
     assert response.status_code == 303 and response.headers["location"] == "/course"
     assert client.get("/course").status_code == 200
-    assert db.scalar(select(InviteCode).where(InviteCode.code == INVITE)).uses == 1
     user = db.scalar(select(User))
     assert user.email == "student@example.com" and user.role == "student"
     assert user.password_hash != PASSWORD
 
 
-def test_register_rejects_bad_invite(client, db):
-    response = register(client, invite_code="WRONG")
+def test_register_requires_consent(client, db):
+    response = register(client, consent="")
     assert response.status_code == 400
-    assert "Код приглашения не найден" in response.text
+    assert "согласия на обработку персональных данных" in response.text
     assert db.scalar(select(User)) is None
-
-
-def test_register_respects_invite_limit(client, db):
-    db.add(InviteCode(code="ONCE", max_uses=1))
-    db.commit()
-    assert register(client, email="first@example.com", invite_code="ONCE").status_code == 303
-    post(client, "/logout")
-    assert register(client, email="second@example.com", invite_code="ONCE").status_code == 400
 
 
 def test_register_validates_fields(client):

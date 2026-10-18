@@ -181,6 +181,8 @@ code, pre, .editor .CodeMirror, .editor .CodeMirror pre.CodeMirror-line, .editor
 
 .container { width: 100%; max-width: 1160px; margin: 0 auto; padding: 0 20px; }
 .container.narrow { max-width: 640px; }
+.container.narrow-wide { max-width: 920px; }
+.sandbox-link { margin: -8px 0 16px; }
 .muted { color: var(--ink-500); }
 .small { font-size: 0.875rem; }
 .icon { flex: none; vertical-align: -0.18em; }
@@ -268,6 +270,20 @@ code, pre, .editor .CodeMirror, .editor .CodeMirror pre.CodeMirror-line, .editor
 .field-error { color: var(--danger); font-size: 0.875rem; font-weight: 550; }
 .field.has-error input { border-color: var(--danger); }
 .form-row { grid-template-columns: 1fr 1.4fr 180px auto; align-items: end; }
+.consent { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 0.9rem; color: var(--ink-700); }
+.consent input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--violet-600); }
+.consent.has-error span { color: var(--danger); }
+textarea {
+  width: 100%; min-height: 120px; padding: 10px 12px; font: inherit; color: var(--ink-900); resize: vertical;
+  background: var(--surface); border: 1px solid var(--input-border); border-radius: var(--radius-sm);
+}
+textarea.code-input { font-family: var(--font-mono); font-size: 0.9rem; min-height: 220px; }
+.rating { display: flex; gap: 8px; flex-wrap: wrap; border: 0; padding: 0; margin: 0; }
+.rating label { display: grid; place-items: center; min-width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 700; }
+.rating label:has(input:checked) { background: var(--violet-100); border-color: var(--violet-500); color: var(--violet-700); }
+.rating input { position: absolute; opacity: 0; pointer-events: none; }
+.status-badge-submitted { background: var(--blue-50); color: var(--blue-700); }
+.teacher-comment { margin-top: 12px; padding: 12px 16px; border-left: 4px solid var(--violet-500); background: var(--violet-50); border-radius: var(--radius-sm); }
 
 .alert { padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid transparent; margin-bottom: 16px; }
 .alert-info { background: var(--blue-50); border-color: var(--blue-100); color: var(--info-text); }
@@ -692,6 +708,9 @@ pre.output.is-error { border-left-color: var(--danger); color: var(--danger-text
 .tabs a:hover { color: var(--blue-700); }
 .tabs a[aria-current="page"] { color: var(--violet-700); border-bottom-color: var(--violet-600); }
 .table-filter { max-width: 360px; margin-bottom: 14px; }
+.tabs-sub { margin: 12px 0 20px; }
+.reflection-answers dt { font-weight: 600; margin-top: 8px; }
+.reflection-answers dd { margin: 2px 0 0; color: var(--ink-700); }
 .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
 .table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 .table th, .table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }

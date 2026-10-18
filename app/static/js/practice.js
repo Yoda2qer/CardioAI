@@ -195,7 +195,8 @@
   let busy = false;
   function setBusy(value) {
     busy = value;
-    runBtn.disabled = checkBtn.disabled = value;
+    runBtn.disabled = value;
+    if (checkBtn) checkBtn.disabled = value;
   }
 
   async function submit(code, values) {
@@ -218,7 +219,7 @@
     writeDraft(code);
     showOutput("Выполняется…", false);
     plotsEl.replaceChildren();
-    if (!withCheck) checksPanel.hidden = true;
+    if (!withCheck && checksPanel) checksPanel.hidden = true;
     try {
       const result = await execute(code);
       showResult(result);
@@ -247,7 +248,8 @@
   startWorker().catch(() => setStatus("error", "Среда Python не загрузилась — повторим при запуске"));
 
   runBtn.addEventListener("click", () => run(false));
-  checkBtn.addEventListener("click", () => run(true));
+  // В песочнице кнопки проверки нет: код только запускается.
+  checkBtn?.addEventListener("click", () => run(true));
   resetBtn.addEventListener("click", () => {
     if (confirm("Вернуть исходный код задания? Ваши изменения будут потеряны.")) {
       editor.setValue(config.starter);

@@ -20,6 +20,7 @@
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Тёмная тема">
         {{ icon("moon", 17) }}{{ icon("sun", 17) }}
       </button>
+      <a href="/about" {% if request.url.path == '/about' %}aria-current="page"{% endif %}>О курсе</a>
       {% if user %}
         <a href="/course" {% if request.url.path == '/course' %}aria-current="page"{% endif %}>Курс</a>
         {% if user.is_admin %}
@@ -55,7 +56,7 @@
 <footer class="site-footer">
   <div class="container footer-inner">
     <p>Курс учебный. Модели и выводы из уроков не предназначены для принятия клинических решений.</p>
-    <p class="muted">Данные: UCI Machine Learning Repository, CC BY 4.0 · Материалы курса: CC BY 4.0</p>
+    <p class="muted">Данные: UCI Machine Learning Repository, CC BY 4.0 · Материалы курса: CC BY 4.0 · <a href="/privacy">Обработка персональных данных</a></p>
   </div>
 </footer>
 {% block scripts %}{% endblock %}

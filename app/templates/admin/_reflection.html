@@ -1,0 +1,13 @@
+{% set item = reflections.get(section.id) %}
+<h3>Рефлексия</h3>
+{% if item %}
+  {% set reflection, answers = item %}
+  <p>Оценка блока: <strong>{{ reflection.rating }} из 5</strong> · {{ reflection.created_at | local_time }}</p>
+  <dl class="reflection-answers">
+    {% for key, question in reflection_questions %}
+      {% if answers.get(key) %}<dt>{{ question }}</dt><dd>{{ answers[key] }}</dd>{% endif %}
+    {% endfor %}
+  </dl>
+{% else %}
+  <p class="muted">Пока не заполнена.</p>
+{% endif %}

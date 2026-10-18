@@ -30,14 +30,11 @@
     <input type="password" name="password2" autocomplete="new-password" required>
     {{ field_error("password2") }}
   </label>
-  {% if settings.invite_required %}
-    <label class="field {{ 'has-error' if errors.get('invite_code') }}">
-      <span>Код приглашения</span>
-      <input type="text" name="invite_code" value="{{ form.get('invite_code', '') }}" autocomplete="off" required>
-      <small class="field-hint">Код выдаёт организатор обучения.</small>
-      {{ field_error("invite_code") }}
-    </label>
-  {% endif %}
+  <label class="consent {{ 'has-error' if errors.get('consent') }}">
+    <input type="checkbox" name="consent" value="1" {{ 'checked' if form.get('consent') }} required>
+    <span>Даю согласие на обработку персональных данных (ФИО и email) для обучения на платформе в соответствии с <a href="/privacy" target="_blank">политикой обработки данных</a>.</span>
+  </label>
+  {{ field_error("consent") }}
   <button class="btn btn-primary btn-block" type="submit">Зарегистрироваться</button>
 </form>
 <p class="auth-links"><span>Уже есть аккаунт?</span> <a href="/login">Войти</a></p>

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<div class="container narrow-wide">
+  <h1>{{ page_title }}</h1>
+  <div class="prose">
+    {{ page_html | safe }}
+    {% if show_plan %}
+      <h2 id="plan">Учебный план</h2>
+      <p>Модуль рассчитан на <strong>{{ "%.1f" | format(course.total_minutes / 45) }} академических часа</strong> ({{ course.total_minutes }} минут, академический час — 45 минут) с учётом самостоятельной и практической работы, домашних заданий, промежуточного и итогового тестирования и рефлексии по каждому блоку.</p>
+      <table>
+        <thead>
+          <tr><th>Блок</th><th>Теория</th><th>Практика</th><th>Домашнее задание</th><th>Тест и рефлексия</th><th>Всего, ак.ч.</th></tr>
+        </thead>
+        <tbody>
+          {% for section in course.sections %}
+            {% set theory = section.lessons | rejectattr("is_practice") | rejectattr("is_homework") | map(attribute="minutes") | sum %}
+            {% set practice = section.lessons | selectattr("is_practice") | map(attribute="minutes") | sum %}
+            {% set homework = section.lessons | selectattr("is_homework") | map(attribute="minutes") | sum %}
+            {% set control = course.quiz_minutes + course.reflection_minutes %}
+            <tr>
+              <td>{{ section.number }}. {{ section.title }}</td>
+              <td>{{ theory }} мин</td>
+              <td>{{ practice }} мин</td>
+              <td>{{ homework }} мин</td>
+              <td>{{ control }} мин</td>
+              <td>{{ "%.1f" | format((theory + practice + homework + control) / 45) }}</td>
+            </tr>
+          {% endfor %}
+          {% if course.final %}
+            <tr>
+              <td>{{ course.final.title }} и итоговая рефлексия</td>
+              <td>—</td><td>—</td><td>—</td>
+              <td>{{ course.final_minutes }} мин</td>
+              <td>{{ "%.1f" | format(course.final_minutes / 45) }}</td>
+            </tr>
+          {% endif %}
+          <tr>
+            <td><strong>Итого</strong></td><td></td><td></td><td></td><td></td>
+            <td><strong>{{ "%.1f" | format(course.total_minutes / 45) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -28,9 +28,6 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_days: int = 14
 
-    # invite — регистрация только по коду приглашения, open — свободная.
-    registration_mode: str = "invite"
-
     pyodide_base_url: str = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/"
 
     quiz_pass_percent: int = 80
@@ -52,10 +49,6 @@ class Settings(BaseSettings):
         if self.mail_backend == "auto":
             return "smtp" if self.smtp_host else "none"
         return self.mail_backend
-
-    @property
-    def invite_required(self) -> bool:
-        return self.registration_mode != "open"
 
 
 def _persistent_secret() -> str:

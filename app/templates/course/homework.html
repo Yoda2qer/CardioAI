@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block content %}
+<div class="container lesson-layout">
+  {% set current = lesson.id %}
+  {% include "course/_sidebar.html" %}
+  <article class="lesson-main">
+    <header class="lesson-header">
+      <p class="eyebrow">Раздел {{ section.number }} · Домашнее задание</p>
+      <h1>{{ lesson.title }}</h1>
+      <p class="lesson-tags">
+        <span class="tag tag-practice">{{ icon("book", 14) }} Самостоятельная работа</span>
+        <span class="tag tag-time">{{ icon("clock", 14) }} {{ lesson.minutes }} мин</span>
+        {% if submission %}
+          {% if submission.status == "accepted" %}<span class="tag tag-success">{{ icon("check", 14) }} Принято преподавателем</span>
+          {% elif submission.status == "returned" %}<span class="tag tag-warn">Возвращено на доработку</span>
+          {% else %}<span class="tag status-badge-submitted">Отправлено, ждёт проверки</span>{% endif %}
+        {% endif %}
+      </p>
+    </header>
+
+    <div class="prose">{{ lesson.html | safe }}</div>
+
+    <section class="card homework-answer">
+      <h2>Ваш ответ</h2>
+      {% if submission and submission.teacher_comment %}
+        <div class="teacher-comment">
+          <strong>Комментарий преподавателя{% if submission.reviewed_at %} от {{ submission.reviewed_at | local_time("%d.%m.%Y") }}{% endif %}:</strong>
+          <p>{{ submission.teacher_comment }}</p>
+        </div>
+      {% endif %}
+      {% if submission and submission.status == "accepted" %}
+        <pre class="output">{{ submission.answer }}</pre>
+      {% else %}
+        <form method="post" action="/lesson/{{ lesson.id }}/homework" class="form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="field">
+            <span>Выводы и код решения</span>
+            <textarea name="answer" class="code-input" required minlength="20" maxlength="20000"
+                      placeholder="Вставьте код из редактора практики или Jupyter и опишите выводы своими словами">{{ submission.answer if submission else "" }}</textarea>
+            <small class="field-hint">Ответ увидит преподаватель: он примет работу или вернёт её с комментарием. Продолжать обучение можно сразу после отправки.</small>
+          </label>
+          <button class="btn btn-primary" type="submit">{{ icon("check") }} {{ "Отправить исправленный ответ" if submission else "Отправить ответ" }}</button>
+        </form>
+      {% endif %}
+    </section>
+
+    <footer class="lesson-footer">
+      {% if prev_url %}<a class="btn btn-secondary" href="{{ prev_url }}">{{ icon("arrow-left") }} Назад</a>{% else %}<span></span>{% endif %}
+      {% if state == "done" %}<a class="btn btn-primary" href="{{ next_url }}">Дальше {{ icon("arrow-right") }}</a>{% endif %}
+    </footer>
+  </article>
+</div>
+{% endblock %}

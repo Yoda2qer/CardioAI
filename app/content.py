@@ -115,7 +115,7 @@ class Practice:
 @dataclass
 class Lesson:
     id: str
-    type: str  # theory | practice
+    type: str  # theory | practice | homework
     title: str
     minutes: int
     number: int
@@ -126,6 +126,10 @@ class Lesson:
     @property
     def is_practice(self) -> bool:
         return self.type == "practice"
+
+    @property
+    def is_homework(self) -> bool:
+        return self.type == "homework"
 
 
 @dataclass
@@ -156,6 +160,11 @@ class Section:
 class Course:
     title: str
     sections: list[Section]
+    # Итоговый тест: раздел без уроков, только с вопросами по всему курсу.
+    final: Section | None = None
+    quiz_minutes: int = 10
+    reflection_minutes: int = 3
+    final_minutes: int = 30
 
     def __post_init__(self):
         self._lessons = {lesson.id: lesson for s in self.sections for lesson in s.lessons}
@@ -170,6 +179,18 @@ class Course:
 
     def section(self, section_id: str) -> Section | None:
         return self._sections.get(section_id)
+
+    def quiz_unit(self, unit_id: str) -> Section | None:
+        """Раздел или итоговый тест — всё, у чего есть тест."""
+        if self.final is not None and unit_id == self.final.id:
+            return self.final
+        return self.section(unit_id)
+
+    @property
+    def total_minutes(self) -> int:
+        lessons = sum(lesson.minutes for lesson in self.lessons)
+        per_section = len(self.sections) * (self.quiz_minutes + self.reflection_minutes)
+        return lessons + per_section + (self.final_minutes if self.final else 0)
 
 
 # --- Загрузка ---------------------------------------------------------------
@@ -222,7 +243,7 @@ def _load_practice(path: Path) -> Practice:
     )
 
 
-def _load_quiz(path: Path, section: Section, lesson_ids: set[str]) -> list[Question]:
+def _load_quiz(path: Path, section: Section, lesson_ids: set[str], size: int = QUIZ_SIZE) -> list[Question]:
     questions = []
     for i, raw in enumerate(_read_yaml(path).get("questions") or [], start=1):
         where = f"{path}: вопрос {i}"
@@ -233,7 +254,7 @@ def _load_quiz(path: Path, section: Section, lesson_ids: set[str]) -> list[Quest
         if not correct or len(correct) == len(options):
             raise ContentError(f"{where}: должен быть хотя бы один верный и один неверный вариант")
         if raw.get("lesson") not in lesson_ids:
-            raise ContentError(f"{where}: поле lesson должно указывать на урок этого раздела")
+            raise ContentError(f"{where}: поле lesson должно указывать на урок курса из этого теста")
         if not str(raw.get("explanation") or "").strip():
             raise ContentError(f"{where}: нет пояснения")
         questions.append(
@@ -246,8 +267,8 @@ def _load_quiz(path: Path, section: Section, lesson_ids: set[str]) -> list[Quest
                 lesson_id=raw["lesson"],
             )
         )
-    if len(questions) != QUIZ_SIZE:
-        raise ContentError(f"{path}: в тесте должно быть {QUIZ_SIZE} вопросов, найдено {len(questions)}")
+    if len(questions) != size:
+        raise ContentError(f"{path}: в тесте должно быть {size} вопросов, найдено {len(questions)}")
     return questions
 
 
@@ -273,7 +294,7 @@ def load_course(content_dir: Path) -> Course:
                 raise ContentError(f"Повторяющийся id урока: {lesson.id}")
             seen.add(lesson.id)
             path = section_dir / l_raw["file"]
-            if lesson.type == "theory":
+            if lesson.type in ("theory", "homework"):
                 try:
                     lesson.html = render_markdown(path.read_text(encoding="utf-8"))
                 except OSError as exc:
@@ -287,7 +308,23 @@ def load_course(content_dir: Path) -> Course:
         sections.append(section)
     if not sections:
         raise ContentError("В course.yaml нет разделов")
-    return Course(title=data.get("title", "CardioAI"), sections=sections)
+
+    final = None
+    if data.get("final"):
+        raw = data["final"]
+        final = Section(
+            id=raw.get("id", "final"), number=len(sections) + 1,
+            title=raw["title"], description=raw.get("description", ""),
+        )
+        final.quiz = _load_quiz(content_dir / raw["file"], final, seen, size=int(raw.get("size", QUIZ_SIZE)))
+    return Course(
+        title=data.get("title", "CardioAI"),
+        sections=sections,
+        final=final,
+        quiz_minutes=int(data.get("quiz_minutes", 10)),
+        reflection_minutes=int(data.get("reflection_minutes", 3)),
+        final_minutes=int((data.get("final") or {}).get("minutes", 30)),
+    )
 
 
 @lru_cache

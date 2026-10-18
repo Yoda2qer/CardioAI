@@ -18,7 +18,6 @@ os.environ.update(
     DATABASE_URL=f"sqlite:///{(_TMP / 'test.db').as_posix()}",
     CONTENT_DIR=str(_TMP / "content"),
     SECRET_KEY="test-secret-key",
-    REGISTRATION_MODE="invite",
     MAIL_BACKEND="console",
     COOKIE_SECURE="false",
     BASE_URL="http://testserver",
@@ -29,11 +28,10 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import InviteCode, User  # noqa: E402
+from app.models import User  # noqa: E402
 from app.security import hash_password, login_throttle  # noqa: E402
 
 PASSWORD = "correct-horse-42"
-INVITE = "TEST-INVITE"
 _CSRF_RE = re.compile(r'name="csrf_token" value="([^"]+)"')
 
 
@@ -42,9 +40,6 @@ def client():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     login_throttle.clear()
-    with SessionLocal() as db:
-        db.add(InviteCode(code=INVITE))
-        db.commit()
     with TestClient(app, follow_redirects=False) as test_client:
         yield test_client
 
@@ -76,7 +71,7 @@ def post(client: TestClient, path: str, data: dict | None = None, *, token_from:
 def register(client: TestClient, email: str = "student@example.com", name: str = "Иванов Иван", **extra):
     data = {
         "full_name": name, "email": email, "password": PASSWORD,
-        "password2": PASSWORD, "invite_code": INVITE,
+        "password2": PASSWORD, "consent": "1",
     }
     data.update(extra)
     return post(client, "/register", data, token_from="/register")

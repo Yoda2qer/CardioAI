@@ -46,6 +46,7 @@ def write_minicourse(root: Path) -> None:
                 "lessons": [
                     {"id": "a1", "type": "theory", "title": "Теория А1", "file": "a1.md", "minutes": 5},
                     {"id": "a2", "type": "practice", "title": "Практика А2", "file": "a2.yaml", "minutes": 10},
+                    {"id": "a3", "type": "homework", "title": "Домашнее задание А3", "file": "a3.md", "minutes": 20},
                 ],
             },
             {
@@ -55,6 +56,7 @@ def write_minicourse(root: Path) -> None:
                 ],
             },
         ],
+        "final": {"id": "final", "title": "Итоговое тестирование", "file": "final.yaml", "size": 15, "minutes": 30},
     }
     (root / "a").mkdir(parents=True, exist_ok=True)
     (root / "b").mkdir(parents=True, exist_ok=True)
@@ -69,3 +71,7 @@ def write_minicourse(root: Path) -> None:
     (root / "a" / "quiz.yaml").write_text(dump(_quiz("a1")), encoding="utf-8")
     (root / "b" / "b1.md").write_text("Текст второго раздела.\n", encoding="utf-8")
     (root / "b" / "quiz.yaml").write_text(dump(_quiz("b1")), encoding="utf-8")
+    (root / "a" / "a3.md").write_text("Опишите выводы по разделу А.\n", encoding="utf-8")
+    (root / "final.yaml").write_text(dump(_quiz("b1")), encoding="utf-8")
+    (root / "about.md").write_text("Тестовое описание курса.\n", encoding="utf-8")
+    (root / "privacy.md").write_text("Тестовая политика.\n", encoding="utf-8")

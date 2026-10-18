@@ -14,7 +14,6 @@
       <h1>{{ target.full_name }}</h1>
       <p class="muted">
         {{ target.email }} · регистрация {{ target.created_at | local_time("%d.%m.%Y") }} · последний вход {{ target.last_login_at | local_time }}
-        {% if target.invite_code %} · код {{ target.invite_code.code }}{% endif %}
       </p>
     </div>
     <div class="page-head-badges">
@@ -55,7 +54,14 @@
                 <td>{{ "Практика" if lesson.is_practice else "Теория" }}</td>
                 <td>{{ done_at.get(lesson.id) | local_time }}</td>
                 <td>
-                  {% if submission %}
+                  {% if lesson.is_homework and homework.get(lesson.id) %}
+                    {% set hw = homework[lesson.id] %}
+                    <details class="code-details">
+                      <summary>{{ {"submitted": "ждёт проверки", "returned": "на доработке", "accepted": "принято"}[hw.status] }}</summary>
+                      <pre class="output">{{ hw.answer }}</pre>
+                      {% if hw.teacher_comment %}<p class="small">Комментарий: {{ hw.teacher_comment }}</p>{% endif %}
+                    </details>
+                  {% elif submission %}
                     <details class="code-details">
                       <summary>{{ plural(submission.attempts, "проверка", "проверки", "проверок") }}{{ ", выполнено" if submission.passed else ", не выполнено" }}</summary>
                       <pre class="output">{{ submission.code }}</pre>
@@ -97,8 +103,29 @@
       {% else %}
         <p class="muted">Попыток пока не было.</p>
       {% endif %}
+      {% include "admin/_reflection.html" %}
     </section>
   {% endfor %}
+  {% if course.final %}
+    {% set section = course.final %}
+    {% set section_attempts = attempts.get(section.id, []) %}
+    <section class="card">
+      <h2>{{ section.title }}</h2>
+      {% if section_attempts %}
+        <ul>
+          {% for attempt in section_attempts %}
+            <li>{{ attempt.created_at | local_time }} — {{ attempt.score }} / {{ attempt.total }}{{ " (сдан)" if attempt.passed else "" }}</li>
+          {% endfor %}
+        </ul>
+        {% if not progress.quiz[section.id].passed %}
+          {{ action("reset-quiz/" ~ section.id, "Сбросить попытки", confirm="Неудачные попытки будут аннулированы. Продолжить?") }}
+        {% endif %}
+      {% else %}
+        <p class="muted">Попыток пока не было.</p>
+      {% endif %}
+      {% include "admin/_reflection.html" %}
+    </section>
+  {% endif %}
 </div>
 {% endblock %}
 {% block scripts %}

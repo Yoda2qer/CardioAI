@@ -31,8 +31,6 @@ if ! "$VENV_PY" manage.py has-admin; then
     echo
     echo "Первый запуск: создайте учётную запись администратора."
     "$VENV_PY" manage.py create-admin
-    "$VENV_PY" manage.py create-invite --note "Первый код приглашения"
-    echo "Передайте этот код слушателям. Новые коды можно создавать в разделе «Слушатели»."
 fi
 
 echo

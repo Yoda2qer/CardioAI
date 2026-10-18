@@ -11,22 +11,6 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-class InviteCode(Base):
-    __tablename__ = "invite_codes"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    note: Mapped[str] = mapped_column(String(200), default="")
-    max_uses: Mapped[int | None] = mapped_column(default=None)
-    uses: Mapped[int] = mapped_column(default=0)
-    is_active: Mapped[bool] = mapped_column(default=True)
-    created_at: Mapped[datetime] = mapped_column(default=utcnow)
-
-    @property
-    def is_usable(self) -> bool:
-        return self.is_active and (self.max_uses is None or self.uses < self.max_uses)
-
-
 class User(Base):
     __tablename__ = "users"
 
@@ -39,11 +23,8 @@ class User(Base):
     must_change_password: Mapped[bool] = mapped_column(default=False)
     # Увеличивается при смене пароля: все прежние сессии и ссылки сброса перестают работать.
     session_version: Mapped[int] = mapped_column(default=1)
-    invite_code_id: Mapped[int | None] = mapped_column(ForeignKey("invite_codes.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(default=None)
-
-    invite_code: Mapped[InviteCode | None] = relationship()
 
     @property
     def is_admin(self) -> bool:
@@ -100,3 +81,37 @@ class Certificate(Base):
     issued_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     user: Mapped[User] = relationship()
+
+
+class HomeworkSubmission(Base):
+    """Домашнее задание раздела: ответ слушателя и отзыв преподавателя."""
+
+    __tablename__ = "homework_submissions"
+    __table_args__ = (UniqueConstraint("user_id", "lesson_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    lesson_id: Mapped[str] = mapped_column(String(32))
+    answer: Mapped[str] = mapped_column(Text)
+    # submitted — ждёт проверки, accepted — принято, returned — возвращено на доработку
+    status: Mapped[str] = mapped_column(String(16), default="submitted")
+    teacher_comment: Mapped[str] = mapped_column(Text, default="")
+    submitted_at: Mapped[datetime] = mapped_column(default=utcnow)
+    reviewed_at: Mapped[datetime | None] = mapped_column(default=None)
+
+    user: Mapped[User] = relationship()
+
+
+class Reflection(Base):
+    """Рефлексия слушателя после завершения раздела или курса."""
+
+    __tablename__ = "reflections"
+    __table_args__ = (UniqueConstraint("user_id", "section_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    section_id: Mapped[str] = mapped_column(String(32))
+    rating: Mapped[int]
+    # JSON: {"<ключ вопроса>": "ответ"}
+    answers_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)

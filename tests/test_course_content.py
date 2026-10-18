@@ -30,8 +30,11 @@ LESSONS = sorted((ROOT / "content").glob("section-*/*.md"))
 def test_course_structure():
     assert len(COURSE.sections) == 5
     for section in COURSE.sections:
-        practices = [lesson for lesson in section.lessons if lesson.is_practice]
-        assert 5 <= len(section.lessons) <= 7, section.title
+        lessons = [lesson for lesson in section.lessons if not lesson.is_homework]
+        practices = [lesson for lesson in lessons if lesson.is_practice]
+        homework = [lesson for lesson in section.lessons if lesson.is_homework]
+        assert 5 <= len(lessons) <= 7, section.title
+        assert len(homework) == 1 and section.lessons[-1].is_homework, section.title
         assert 2 <= len(practices) <= 3, section.title
         assert len(section.quiz) == 15, section.title
         assert not section.lessons[0].is_practice, "раздел начинается с теории"
@@ -40,6 +43,14 @@ def test_course_structure():
 def test_every_lesson_file_is_listed_in_course():
     listed = sum(len(section.lessons) for section in COURSE.sections)
     assert listed == len(PRACTICES) + len(LESSONS)
+
+
+def test_final_quiz_and_study_hours():
+    assert COURSE.final is not None and len(COURSE.final.quiz) == 20
+    covered_sections = {COURSE.lesson(q.lesson_id).section.id for q in COURSE.final.quiz}
+    assert covered_sections == {s.id for s in COURSE.sections}
+    # Регламент конкурса: продолжительность модуля 10–12 академических часов (по 45 минут).
+    assert 10 * 45 <= COURSE.total_minutes <= 12 * 45
 
 
 def test_quiz_questions_cover_several_lessons():
@@ -52,7 +63,7 @@ def test_quiz_questions_cover_several_lessons():
 
 def test_theory_lessons_have_expected_length():
     for lesson in COURSE.lessons:
-        if lesson.is_practice:
+        if lesson.is_practice or lesson.is_homework:
             continue
         prose = re.sub(r"<pre.*?</pre>", " ", lesson.html, flags=re.S)
         words = len(re.sub(r"<[^>]+>", " ", prose).split())

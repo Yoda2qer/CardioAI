@@ -6,7 +6,7 @@
   {% include "course/_sidebar.html" %}
   <div class="lesson-main">
     <header class="lesson-header">
-      <p class="eyebrow">Раздел {{ section.number }} · Результат теста</p>
+      <p class="eyebrow">{{ "Итоговое тестирование" if section.id == progress.final_id else "Раздел " ~ section.number }} · Результат теста</p>
       <h1>{{ section.title }}</h1>
     </header>
 
@@ -18,11 +18,14 @@
       <div class="result-text">
         {% if attempt.passed %}
           <h2>Тест сдан</h2>
-          <p>Проходной балл — {{ settings.quiz_pass_percent }}%. {% if next_section %}Раздел «{{ next_section.title }}» открыт.{% else %}Это был последний раздел курса.{% endif %}</p>
-          {% if progress.completed %}
+          <p>Проходной балл — {{ settings.quiz_pass_percent }}%.</p>
+          {% if section.id not in progress.reflected %}
+            <p>Остался последний шаг блока — короткая рефлексия: что было полезно и что осталось непонятным.</p>
+            <a class="btn btn-primary" href="/reflection/{{ section.id }}">Заполнить рефлексию {{ icon("arrow-right") }}</a>
+          {% elif progress.completed %}
             <a class="btn btn-primary" href="/certificate">{{ icon("award") }} Получить сертификат</a>
-          {% elif next_section %}
-            <a class="btn btn-primary" href="/lesson/{{ next_section.lessons[0].id }}">К следующему разделу {{ icon("arrow-right") }}</a>
+          {% else %}
+            <a class="btn btn-primary" href="{{ progress.next_url }}">Продолжить обучение {{ icon("arrow-right") }}</a>
           {% endif %}
         {% else %}
           <h2>Пока не сдан</h2>

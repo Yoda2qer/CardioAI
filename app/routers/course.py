@@ -1,19 +1,21 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..content import Lesson, get_course
+from ..content import Lesson, get_course, render_markdown
 from ..db import get_db
 from ..grading import evaluate_checks
-from ..models import LessonProgress, PracticeSubmission, User, utcnow
+from ..models import HomeworkSubmission, LessonProgress, PracticeSubmission, User, utcnow
 from ..progress import DONE, LOCKED, build_progress
-from ..security import require_user, verify_csrf
-from ..web import render
+from ..security import get_optional_user, require_user, verify_csrf
+from ..web import flash, render
+
+HOMEWORK_MAX_LENGTH = 20_000
 
 router = APIRouter()
 
@@ -77,6 +79,13 @@ def lesson_page(
         lesson=lesson, section=lesson.section, progress=progress, state=state,
         prev_url=prev_url, next_url=next_url,
     )
+    if lesson.is_homework:
+        submission = db.scalar(
+            select(HomeworkSubmission).where(
+                HomeworkSubmission.user_id == user.id, HomeworkSubmission.lesson_id == lesson.id
+            )
+        )
+        return render(request, "course/homework.html", submission=submission, **context)
     if not lesson.is_practice:
         return render(request, "course/lesson.html", **context)
 
@@ -108,6 +117,8 @@ def complete_lesson(
     lesson = _get_lesson(lesson_id)
     if lesson.is_practice:
         raise HTTPException(400, "Практический урок засчитывается после проверки кода")
+    if lesson.is_homework:
+        raise HTTPException(400, "Домашнее задание засчитывается после отправки ответа")
     progress = build_progress(db, user, get_course())
     if progress.lesson_state[lesson.id] == LOCKED:
         raise HTTPException(403, "Урок пока недоступен")
@@ -159,3 +170,83 @@ def check_practice(
         "already_done": progress.lesson_state[lesson.id] == DONE,
         "results": [{"label": r.label, "ok": r.ok, "message": r.message} for r in results],
     }
+
+
+SANDBOX_STARTER = """import pandas as pd
+import matplotlib.pyplot as plt
+
+hf = pd.read_csv("heart_failure.csv")   # сердечная недостаточность
+hd = pd.read_csv("heart_disease.csv")   # ишемическая болезнь сердца
+print(hf.shape, hd.shape)
+"""
+
+
+@router.get("/sandbox")
+def sandbox(request: Request, user: User = Depends(require_user)):
+    config = {
+        "lessonId": "sandbox",
+        "starter": SANDBOX_STARTER,
+        "saved": None,
+        "varNames": [],
+        "packages": ["pandas", "scipy", "scikit-learn", "statsmodels", "matplotlib"],
+        "datasets": ["heart_failure.csv", "heart_disease.csv"],
+        "pyodideBaseUrl": get_settings().pyodide_base_url,
+        "nextUrl": None,
+    }
+    return render(request, "course/sandbox.html", config=config)
+
+
+@router.post("/lesson/{lesson_id}/homework", dependencies=[Depends(verify_csrf)])
+def submit_homework(
+    request: Request,
+    lesson_id: str,
+    answer: str = Form(""),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    lesson = _get_lesson(lesson_id)
+    if not lesson.is_homework:
+        raise HTTPException(400, "Это не домашнее задание")
+    if build_progress(db, user, get_course()).lesson_state[lesson.id] == LOCKED:
+        raise HTTPException(403, "Задание пока недоступно")
+    answer = answer.strip()
+    if len(answer) < 20:
+        flash(request, "Ответ слишком короткий: опишите решение подробнее.", "danger")
+        return RedirectResponse(f"/lesson/{lesson.id}", status_code=303)
+    submission = db.scalar(
+        select(HomeworkSubmission).where(
+            HomeworkSubmission.user_id == user.id, HomeworkSubmission.lesson_id == lesson.id
+        )
+    )
+    if submission is None:
+        submission = HomeworkSubmission(user_id=user.id, lesson_id=lesson.id, answer="")
+        db.add(submission)
+    elif submission.status == "accepted":
+        flash(request, "Задание уже принято преподавателем, изменить ответ нельзя.", "info")
+        return RedirectResponse(f"/lesson/{lesson.id}", status_code=303)
+    submission.answer = answer[:HOMEWORK_MAX_LENGTH]
+    submission.status = "submitted"
+    submission.submitted_at = utcnow()
+    mark_lesson_done(db, user, lesson.id)
+    db.commit()
+    flash(request, "Ответ отправлен преподавателю. Можно продолжать обучение.", "success")
+    return RedirectResponse(_neighbours(lesson)[1], status_code=303)
+
+
+def _content_page(request: Request, filename: str, title: str, **extra):
+    path = get_settings().content_dir / filename
+    try:
+        html = render_markdown(path.read_text(encoding="utf-8"))
+    except OSError:
+        raise HTTPException(404, "Страница не найдена")
+    return render(request, "page.html", page_title=title, page_html=html, **extra)
+
+
+@router.get("/about")
+def about(request: Request, user: User | None = Depends(get_optional_user)):
+    return _content_page(request, "about.md", "О курсе", show_plan=True)
+
+
+@router.get("/privacy")
+def privacy(request: Request, user: User | None = Depends(get_optional_user)):
+    return _content_page(request, "privacy.md", "Политика обработки персональных данных")

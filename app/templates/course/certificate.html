@@ -27,6 +27,13 @@
               <td>{{ attempt.score }} / {{ attempt.total }}</td>
             </tr>
           {% endfor %}
+          {% if course.final %}
+            {% set attempt = progress.quiz[course.final.id].passing_attempt %}
+            <tr>
+              <th scope="row">{{ course.final.title }}</th>
+              <td>{{ attempt.score }} / {{ attempt.total }}</td>
+            </tr>
+          {% endif %}
         </tbody>
       </table>
 

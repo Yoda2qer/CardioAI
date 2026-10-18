@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Домашние задания{% endblock %}
+{% block content %}
+<div class="container">
+  <h1>Администрирование</h1>
+  {% set active = "homework" %}
+  {% include "admin/_tabs.html" %}
+
+  <nav class="tabs tabs-sub" aria-label="Фильтр по статусу">
+    {% for key, label in statuses.items() %}
+      <a href="/admin/homework?status={{ key }}" {% if key == status %}aria-current="page"{% endif %}>{{ label }} ({{ counts.get(key, 0) }})</a>
+    {% endfor %}
+  </nav>
+
+  {% for item in items %}
+    {% set lesson = course.lesson(item.lesson_id) %}
+    <section class="card">
+      <header class="page-head">
+        <div>
+          <h2>{{ lesson.title if lesson else item.lesson_id }}</h2>
+          <p class="muted small">
+            <a href="/admin/users/{{ item.user.id }}">{{ item.user.full_name }}</a> · {{ item.user.email }} ·
+            отправлено {{ item.submitted_at | local_time }}{% if lesson %} · раздел {{ lesson.section.number }}{% endif %}
+          </p>
+        </div>
+      </header>
+      <pre class="output">{{ item.answer }}</pre>
+      {% if item.teacher_comment %}<div class="teacher-comment"><strong>Прошлый комментарий:</strong> {{ item.teacher_comment }}</div>{% endif %}
+      {% if item.status != "accepted" %}
+        <form method="post" action="/admin/homework/{{ item.id }}/review" class="form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="field">
+            <span>Комментарий слушателю</span>
+            <textarea name="comment" maxlength="5000" placeholder="Что получилось хорошо и что стоит исправить"></textarea>
+          </label>
+          <div class="actions-card">
+            <button class="btn btn-primary btn-sm" type="submit" name="decision" value="accepted">{{ icon("check", 16) }} Принять</button>
+            <button class="btn btn-secondary btn-sm" type="submit" name="decision" value="returned">Вернуть на доработку</button>
+          </div>
+        </form>
+      {% endif %}
+    </section>
+  {% else %}
+    <p class="muted">Работ с таким статусом нет.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -24,6 +24,7 @@
     </div>
   </section>
 
+  <p class="sandbox-link"><a class="btn btn-secondary btn-sm" href="/sandbox">{{ icon("code", 16) }} Песочница Python для домашних заданий</a></p>
   {% if user.is_admin %}
     <div class="alert alert-info">Вы вошли как администратор: все уроки и тесты открыты без соблюдения порядка.</div>
   {% endif %}
@@ -57,9 +58,13 @@
                 </span>
                 <span class="lesson-title">{{ lesson.title }}</span>
                 <span class="lesson-tags">
-                  <span class="tag {{ 'tag-practice' if lesson.is_practice }}">
-                    {{ icon("code" if lesson.is_practice else "book", 14) }} {{ "Практика" if lesson.is_practice else "Теория" }}
-                  </span>
+                  {% if lesson.is_homework %}
+                    <span class="tag tag-warn">{{ icon("book", 14) }} Домашнее задание</span>
+                  {% else %}
+                    <span class="tag {{ 'tag-practice' if lesson.is_practice }}">
+                      {{ icon("code" if lesson.is_practice else "book", 14) }} {{ "Практика" if lesson.is_practice else "Теория" }}
+                    </span>
+                  {% endif %}
                   <span class="tag tag-time">{{ icon("clock", 14) }} {{ lesson.minutes }} мин</span>
                 </span>
                 <span class="visually-hidden">
@@ -87,9 +92,62 @@
               </span>
             {% if quiz.state == "locked" %}</span>{% else %}</a>{% endif %}
           </li>
+          {% set reflection = progress.reflection_state(section.id) %}
+          <li class="lesson-row is-{{ reflection }}">
+            {% if reflection == "locked" %}<span class="lesson-link">{% else %}<a class="lesson-link" href="/reflection/{{ section.id }}">{% endif %}
+              <span class="lesson-status" aria-hidden="true">
+                {% if reflection == "done" %}{{ icon("check", 16) }}{% elif reflection == "locked" %}{{ icon("lock", 14) }}{% else %}{{ icon("user", 16) }}{% endif %}
+              </span>
+              <span class="lesson-title">Рефлексия по блоку</span>
+              <span class="lesson-tags"><span class="tag tag-time">{{ icon("clock", 14) }} {{ course.reflection_minutes }} мин</span></span>
+            {% if reflection == "locked" %}</span>{% else %}</a>{% endif %}
+          </li>
         </ol>
       </details>
     {% endfor %}
+
+    {% if course.final %}
+      {% set final = course.final %}
+      {% set quiz = progress.quiz[final.id] %}
+      <details class="section-card {{ 'is-locked' if not quiz.available }}" {{ 'open' if quiz.available }}>
+        <summary>
+          <span class="section-number">{{ icon("award", 20) }}</span>
+          <span class="section-head">
+            <span class="section-title">{{ final.title }}</span>
+            <span class="section-desc">{{ final.description }}</span>
+          </span>
+          <span class="section-meta">
+            {% if quiz.passed %}<span class="badge badge-success">{{ icon("check", 14) }} Сдан</span>
+            {% elif not quiz.available %}<span class="badge badge-muted">{{ icon("lock", 14) }} Закрыт</span>{% endif %}
+          </span>
+        </summary>
+        <ol class="lesson-list">
+          <li class="lesson-row lesson-row-quiz is-{{ quiz.state }}">
+            {% if quiz.state == "locked" %}<span class="lesson-link">{% else %}<a class="lesson-link" href="/quiz/{{ final.id }}">{% endif %}
+              <span class="lesson-status" aria-hidden="true">
+                {% if quiz.passed %}{{ icon("check", 16) }}{% elif quiz.state == "locked" %}{{ icon("lock", 14) }}{% else %}{{ icon("quiz", 16) }}{% endif %}
+              </span>
+              <span class="lesson-title">Итоговый тест по всему курсу</span>
+              <span class="lesson-tags">
+                {% if quiz.passed %}<span class="tag tag-success">{{ quiz.passing_attempt.score }} из {{ quiz.passing_attempt.total }}</span>
+                {% elif quiz.locked_until %}<span class="tag tag-warn">Пауза до {{ quiz.locked_until | local_time }}</span>
+                {% else %}<span class="tag">{{ plural(final.quiz | length, "вопрос", "вопроса", "вопросов") }}</span>{% endif %}
+              </span>
+            {% if quiz.state == "locked" %}</span>{% else %}</a>{% endif %}
+          </li>
+          {% set reflection = progress.reflection_state(final.id) %}
+          <li class="lesson-row is-{{ reflection }}">
+            {% if reflection == "locked" %}<span class="lesson-link">{% else %}<a class="lesson-link" href="/reflection/{{ final.id }}">{% endif %}
+              <span class="lesson-status" aria-hidden="true">
+                {% if reflection == "done" %}{{ icon("check", 16) }}{% elif reflection == "locked" %}{{ icon("lock", 14) }}{% else %}{{ icon("user", 16) }}{% endif %}
+              </span>
+              <span class="lesson-title">Рефлексия по блоку</span>
+              <span class="lesson-tags"><span class="tag tag-time">{{ icon("clock", 14) }} {{ course.reflection_minutes }} мин</span></span>
+            {% if reflection == "locked" %}</span>{% else %}</a>{% endif %}
+          </li>
+        </ol>
+      </details>
+    {% endif %}
   </div>
 
   <section class="certificate-teaser {{ 'is-ready' if progress.completed }}">
@@ -100,7 +158,7 @@
         <p>Все тесты сданы. Сертификат можно открыть и распечатать.</p>
         <a class="btn btn-primary" href="/certificate">Открыть сертификат</a>
       {% else %}
-        <p>Станет доступен после сдачи тестов по всем разделам.</p>
+        <p>Станет доступен после итогового теста и итоговой рефлексии.</p>
       {% endif %}
     </div>
   </section>

@@ -2,7 +2,6 @@
 
     python manage.py init-db          создать таблицы базы данных
     python manage.py create-admin     создать администратора (или повысить существующего пользователя)
-    python manage.py create-invite    создать код приглашения
     python manage.py has-admin        код возврата 0, если администратор уже есть
     python manage.py run              запустить сервер
 """
@@ -86,23 +85,6 @@ def cmd_create_admin(args) -> int:
     return 0
 
 
-def cmd_create_invite(args) -> int:
-    from app.db import SessionLocal
-    from app.models import InviteCode
-    from app.routers.admin import generate_invite_code
-
-    _init_db()
-    code = args.code or generate_invite_code()
-    with SessionLocal() as db:
-        if db.scalar(select(InviteCode.id).where(InviteCode.code == code)):
-            print(f"Код {code} уже существует.", file=sys.stderr)
-            return 1
-        db.add(InviteCode(code=code, note=args.note, max_uses=args.max_uses))
-        db.commit()
-    print(f"Код приглашения: {code}")
-    return 0
-
-
 def cmd_run(args) -> int:
     import uvicorn
 
@@ -129,12 +111,6 @@ def main() -> int:
     admin.add_argument("--name")
     admin.add_argument("--password", help="если не указан, будет запрошен скрытым вводом")
     admin.set_defaults(func=cmd_create_admin)
-
-    invite = sub.add_parser("create-invite", help="создать код приглашения")
-    invite.add_argument("--code", help="если не указан, будет сгенерирован")
-    invite.add_argument("--note", default="")
-    invite.add_argument("--max-uses", type=int, default=None, help="лимит регистраций по коду")
-    invite.set_defaults(func=cmd_create_invite)
 
     run = sub.add_parser("run", help="запустить сервер")
     run.add_argument("--host", default="127.0.0.1", help="0.0.0.0 — принимать подключения из сети")
