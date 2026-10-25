@@ -105,3 +105,7 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+# Подтверждение email (заглушка)
+from app.routers import verify as _verify_router
+app.include_router(_verify_router.router)

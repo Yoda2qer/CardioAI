@@ -48,7 +48,7 @@ def cmd_create_admin(args) -> int:
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == email))
         if user and not args.password:
-            user.role = "admin"
+            user.role = "admin"; user.email_verified = True
             db.commit()
             print(f"Пользователь {email} теперь администратор.")
             return 0
@@ -73,10 +73,10 @@ def cmd_create_admin(args) -> int:
             return 1
 
         if user is None:
-            user = User(email=email, full_name=name, password_hash=hash_password(password), role="admin")
+            user = User(email=email, full_name=name, password_hash=hash_password(password), role="admin", email_verified=True)
             db.add(user)
         else:
-            user.role = "admin"
+            user.role = "admin"; user.email_verified = True
             user.full_name = name
             user.password_hash = hash_password(password)
             user.session_version += 1

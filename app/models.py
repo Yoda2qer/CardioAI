@@ -13,6 +13,7 @@ def utcnow() -> datetime:
 
 class User(Base):
     __tablename__ = "users"
+    email_verified: Mapped[bool] = mapped_column(default=False, server_default="0")
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
@@ -115,3 +116,19 @@ class Reflection(Base):
     # JSON: {"<ключ вопроса>": "ответ"}
     answers_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+# --- Подтверждение email (заглушка) ---
+from datetime import datetime as _dt
+from sqlalchemy import Column as _Col, DateTime as _DateTime, ForeignKey as _FK, Integer as _Int, String as _Str
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id = _Col(_Int, primary_key=True)
+    user_id = _Col(_Int, _FK("users.id"), index=True, nullable=False)
+    code_hash = _Col(_Str(128), nullable=False)
+    expires_at = _Col(_DateTime, nullable=False)
+    attempts = _Col(_Int, default=0, nullable=False)
+    created_at = _Col(_DateTime, default=_dt.utcnow, nullable=False)
