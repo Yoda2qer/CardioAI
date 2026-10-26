@@ -35,7 +35,7 @@
 Нужен Python 3.11 или новее.
 
 ```bash
-git clone https://github.com/Toster1012/CardioAI.git
+git clone https://github.com/Yoda2qer/CardioAI.git
 cd CardioAI
 ```
 

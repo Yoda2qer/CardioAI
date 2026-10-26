@@ -109,7 +109,7 @@ def build() -> Path:
                          "первый запуск, приглашение слушателей, настройки, резервное копирование и решение проблем.")
     pdf.ln(4)
     pdf.set_x(18)
-    pdf.cell(0, 6, f"Версия от {date.today():%d.%m.%Y} · github.com/Toster1012/CardioAI")
+    pdf.cell(0, 6, f"Версия от {date.today():%d.%m.%Y} · github.com/Yoda2qer/CardioAI")
 
     html = markdown_to_html(SOURCE.read_text(encoding="utf-8"))
     # Заголовок первого уровня уже на титульной странице.

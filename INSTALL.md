@@ -77,11 +77,11 @@ sudo apt install python3 python3-venv python3-pip
 **Через Git** (если он установлен):
 
 ```bash
-git clone https://github.com/Toster1012/CardioAI.git
+git clone https://github.com/Yoda2qer/CardioAI.git
 cd CardioAI
 ```
 
-**Без Git.** Откройте [github.com/Toster1012/CardioAI](https://github.com/Toster1012/CardioAI), нажмите «Code» → «Download ZIP», распакуйте архив и перейдите в получившуюся папку.
+**Без Git.** Откройте [github.com/Yoda2qer/CardioAI](https://github.com/Yoda2qer/CardioAI), нажмите «Code» → «Download ZIP», распакуйте архив и перейдите в получившуюся папку.
 
 ## 4. Быстрый запуск
 
@@ -371,4 +371,4 @@ DATABASE_URL=postgresql+psycopg://пользователь:пароль@серв
 | Сервер не запускается после правки `content/` | в сообщении об ошибке указан файл и место ошибки; частая причина — двоеточие в тексте YAML без кавычек |
 | Коллеги в сети не открывают сайт | запуск без `--host 0.0.0.0` или порт закрыт брандмауэром — раздел 8 |
 
-Если ошибка не описана здесь, создайте обращение на [странице проекта](https://github.com/Toster1012/CardioAI/issues), приложив текст из окна сервера.
+Если ошибка не описана здесь, создайте обращение на [странице проекта](https://github.com/Yoda2qer/CardioAI/issues), приложив текст из окна сервера.
